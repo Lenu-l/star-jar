@@ -1,0 +1,2824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>星星罐罐 · 把坚持变成看得见的资产</title>
+<!-- 手机桌面图标 / PWA（GitHub Pages 部署时与 index.html 同目录） -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FFF6E3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="星星罐罐">
+<style>
+/* ============ 基础 ============ */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root{
+  --ink:#6B5D57; --ink-soft:#A08D80; --ink-faint:#C9B8A8;
+  --cream:#FFFDF8; --paper:#FFF6E8; --line:#E8D5B8;
+  --yellow:#FFD66B; --blue:#93C9F7; --pink:#FFA9C9; --mint:#8FDCC2; --lav:#C3AEF2;
+  --orange:#FF9A5C; --brown:#E0A458; --brown-dk:#8C5A2B;
+  --shadow:0 4px 0 rgba(140,90,43,.22);
+}
+html,body{ height:100%; overflow:hidden; background:#FBF3E4;
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  color:var(--ink); }
+button{ font-family:inherit; border:none; background:none; cursor:pointer; color:inherit; }
+input{ font-family:inherit; }
+#app{ position:fixed; inset:0; overflow:hidden; }
+#stage{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(100vw, calc(100vh * 4 / 3)); height:min(100vh, calc(100vw * 3 / 4));
+  display:block; touch-action:none; image-rendering:pixelated; background:#FBF3E4; }
+/* 精灵专属顶层画布：覆盖在所有场景/装饰/罐子乃至左栏之上（z-index 高于左栏 18、低于标语气泡 28），
+   本身透明且 pointer-events:none —— 既不挡左栏点击，又保证小精灵永远在最上层、不会被任何物品穿透 */
+#sprite-layer{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(100vw, calc(100vh * 4 / 3)); height:min(100vh, calc(100vw * 3 / 4));
+  z-index:40; pointer-events:none; image-rendering:pixelated; }
+
+/* ============ 顶部 HUD ============ */
+#hud{ position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between;
+  align-items:flex-start; padding:14px 16px; pointer-events:none; z-index:20; }
+.hud-card{ background:var(--paper); border:3px solid var(--line); border-radius:14px;
+  padding:6px 12px; box-shadow:var(--shadow); pointer-events:auto; }
+.hud-streak{ display:flex; align-items:center; gap:8px; }
+.hud-streak .num{ font-size:24px; font-weight:800; color:var(--brown-dk); line-height:1; }
+.hud-star{ width:24px; height:24px; flex:none; }
+.hud-right{ display:flex; gap:8px; align-items:center; }
+.hud-total{ font-size:11px; color:var(--ink-soft); }
+.hud-total b{ font-size:15px; color:var(--ink); }
+.hud-left{ display:flex; gap:8px; align-items:center; }
+.hud-days{ display:flex; align-items:center; gap:6px; font-size:14px; font-weight:700;
+  color:var(--brown-dk); letter-spacing:.5px; }
+.hud-days .emoji{ font-size:18px; line-height:1; }
+.hud-days b{ font-size:20px; color:#E07A3C; }
+.icon-btn{ width:34px; height:34px; border-radius:10px; background:var(--paper);
+  border:3px solid var(--line); box-shadow:var(--shadow); display:flex; align-items:center;
+  justify-content:center; font-size:15px; pointer-events:auto; transition:transform .12s; }
+.icon-btn:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(140,90,43,.22); }
+
+/* ============ 底部 dock ============ */
+#dock{ position:absolute; left:50%; transform:translateX(-50%); bottom:12px; z-index:30;
+  display:flex; align-items:center; gap:6px; padding:6px 10px;
+  background:var(--paper); border:3px solid var(--line); border-radius:18px;
+  box-shadow:0 5px 0 rgba(140,90,43,.22); max-width:94vw; }
+.jar-btn{ position:relative; width:40px; height:40px; border-radius:12px; flex:none;
+  border:3px solid var(--paper); box-shadow:0 3px 0 rgba(140,90,43,.28);
+  display:flex; align-items:center; justify-content:center; transition:transform .18s; overflow:hidden; }
+.jar-btn::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:8px; background:rgba(0,0,0,.14); }
+.jar-btn:active{ transform:translateY(2px); }
+.jar-btn.active{ transform:scale(1.12) translateY(-2px); border-color:var(--ink); }
+.jar-btn .glyph{ font-size:16px; }
+.jar-btn .badge{ position:absolute; top:-6px; right:-6px; width:14px; height:14px; border-radius:50%;
+  background:var(--paper); border:2px solid var(--line); display:none; align-items:center; justify-content:center; }
+.jar-btn .badge::after{ content:""; width:6px; height:6px; background:var(--brown-dk); }
+.jar-btn.done .badge{ display:flex; }
+#check-btn{ position:relative; width:60px; height:60px; border-radius:18px; flex:none; margin:0 4px;
+  background:var(--brown);
+  border:3px solid var(--paper); box-shadow:0 5px 0 var(--brown-dk), inset 0 3px 0 rgba(255,255,255,.35);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  color:#fff; transition:transform .12s; }
+#check-btn:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--brown-dk); }
+#check-btn .glyph{ font-size:19px; line-height:1; }
+#check-btn .txt{ font-size:10px; font-weight:700; letter-spacing:2px; }
+#check-btn.pulse{ animation:btnPulse 1.6s ease-in-out infinite; }
+@keyframes btnPulse{ 0%,100%{ box-shadow:0 5px 0 var(--brown-dk), 0 0 0 0 rgba(255,214,107,.5); }
+  50%{ box-shadow:0 5px 0 var(--brown-dk), 0 0 0 9px rgba(255,214,107,0); } }
+
+/* ============ 左侧目标栏 ============ */
+#jar-rail{ position:absolute; left:10px; top:72px; bottom:12px; z-index:18;
+  display:flex; flex-direction:column; gap:8px; width:106px; pointer-events:none; }
+#rail-list{ display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1; padding-right:2px; }
+#rail-list::-webkit-scrollbar{ width:0; }
+.jar-card{ position:relative; width:100%; text-align:left; border:3px solid var(--c, var(--brown));
+  border-left:9px solid var(--c, var(--brown)); background:var(--ctint, var(--paper)); border-radius:14px;
+  box-shadow:0 3px 0 rgba(140,90,43,.16); padding:7px 8px; display:flex; flex-direction:column; gap:1px;
+  transition:transform .15s, box-shadow .15s, background .15s, border-color .15s; pointer-events:auto; }
+.jar-card:active{ transform:translateY(2px); }
+.jar-card.active{ border-color:var(--c); background:var(--c); transform:translateX(3px) scale(1.04);
+  box-shadow:0 5px 12px rgba(0,0,0,.18); }
+.jar-card .jc-glyph{ font-size:16px; line-height:1; width:28px; height:28px; border-radius:9px;
+  display:flex; align-items:center; justify-content:center; background:var(--c, var(--brown));
+  box-shadow:0 1px 3px rgba(0,0,0,.15); margin-bottom:2px; border:2px solid rgba(255,255,255,.85); }
+.jar-card.active .jc-glyph{ background:#fff; }
+.jc-name{ font-size:12px; font-weight:800; color:var(--ink); line-height:1.2;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.jar-card.active .jc-name{ color:var(--ink); }
+.jc-meta{ font-size:10px; color:var(--ink-soft); }
+.jar-card.active .jc-meta{ color:rgba(60,40,25,.82); }
+.jar-card.done::after{ content:"✓"; position:absolute; top:5px; right:7px; font-size:12px; font-weight:800; color:var(--c); }
+.jar-card.active.done::after{ color:#fff; }
+.rail-add{ flex:none; width:100%; height:38px; font-size:22px; font-weight:800; color:var(--brown-dk);
+  background:var(--paper); border:3px dashed var(--line); border-radius:14px; box-shadow:0 3px 0 rgba(140,90,43,.18);
+  pointer-events:auto; }
+.rail-add:active{ transform:translateY(2px); }
+
+/* ============ 当前目标卡片 ============ */
+.hud-goal{ display:flex; align-items:center; gap:7px; padding:6px 10px; }
+.hud-goal .hg-emoji{ font-size:18px; line-height:1; flex:none; }
+.hud-goal .hg-txt{ display:flex; flex-direction:column; line-height:1.2; min-width:0; }
+.hud-goal .hg-name{ font-size:13px; font-weight:800; color:var(--ink);
+  max-width:128px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hud-goal .hg-meta{ font-size:10px; color:var(--ink-soft); }
+
+/* ============ 三步悬浮食材 ============ */
+#step-bar{ position:absolute; z-index:25; display:none; gap:16px; transform:translate(-50%,-50%); }
+#step-bar.show{ display:flex; }
+.step-btn{ position:relative; width:60px; height:60px; border-radius:16px;
+  background:var(--paper); border:3px solid var(--line);
+  box-shadow:0 4px 0 rgba(140,90,43,.25);
+  display:flex; align-items:center; justify-content:center;
+  animation:floaty 2.2s steps(4) infinite; transition:transform .15s, border-color .2s; }
+.step-btn:nth-child(2){ animation-delay:.35s; }
+.step-btn:nth-child(3){ animation-delay:.7s; }
+.step-btn canvas{ width:44px; height:44px; image-rendering:pixelated; }
+.step-btn .no{ position:absolute; top:-8px; left:-8px; width:20px; height:20px; border-radius:50%;
+  background:var(--brown-dk); color:#fff; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center; border:2px solid var(--paper); }
+.step-btn:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(140,90,43,.25); }
+.step-btn.next{ border-color:var(--brown); }
+.step-btn.done{ opacity:.5; }
+.step-btn.done canvas{ filter:saturate(.5); }
+@keyframes floaty{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+
+/* ============ 弹层 ============ */
+#modal-layer{ position:absolute; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+  background:rgba(107,93,87,.34); padding:18px; }
+#modal-layer.show{ display:flex; }
+.modal{ width:min(430px,94vw); max-height:88vh; overflow-y:auto; background:var(--cream);
+  border:3px solid var(--line); border-radius:18px; box-shadow:0 8px 0 rgba(107,93,87,.3);
+  padding:20px; animation:popIn .3s steps(6); }
+@keyframes popIn{ from{ transform:scale(.85); opacity:0; } to{ transform:scale(1); opacity:1; } }
+.modal h2{ font-size:18px; margin-bottom:4px; }
+.modal .sub{ font-size:12px; color:var(--ink-soft); margin-bottom:16px; }
+.field{ margin-bottom:16px; }
+.field label{ display:block; font-size:13px; font-weight:700; margin-bottom:8px; }
+.field input[type=text]{ width:100%; padding:10px 12px; border:3px solid var(--line); border-radius:10px;
+  font-size:14px; color:var(--ink); background:#fff; outline:none; }
+.field input[type=text]:focus{ border-color:var(--brown); }
+.opt-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.opt{ border:3px solid var(--line); border-radius:12px; padding:9px 6px; text-align:center;
+  background:#fff; transition:all .15s; box-shadow:0 3px 0 rgba(140,90,43,.15); }
+.opt .ic{ font-size:20px; }
+.opt .nm{ font-size:12px; font-weight:700; margin-top:3px; }
+.opt .ds{ font-size:10px; color:var(--ink-faint); margin-top:1px; }
+.opt.sel{ border-color:var(--brown-dk); background:#FFF3D8; transform:scale(1.04); }
+.opt.sel .nm{ color:var(--brown-dk); }
+.btn-row{ display:flex; gap:10px; margin-top:18px; }
+.btn{ flex:1; padding:12px; border-radius:12px; font-size:14px; font-weight:700; text-align:center;
+  transition:transform .12s; }
+.btn:active{ transform:translateY(2px); }
+.btn-primary{ background:var(--brown); color:#fff; box-shadow:0 4px 0 var(--brown-dk); }
+.btn-primary:active{ box-shadow:0 2px 0 var(--brown-dk); }
+.btn-ghost{ background:var(--paper); color:var(--ink-soft); border:3px solid var(--line); box-shadow:0 3px 0 rgba(140,90,43,.18); }
+.btn-danger{ background:#fff; color:#D06A6A; border:3px solid #F0C4C4; }
+
+/* ============ 统计页 ============ */
+.stat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+.stat-box{ background:var(--paper); border:3px solid var(--line); border-radius:12px; padding:12px 8px; text-align:center; }
+.stat-box .v{ font-size:20px; font-weight:800; color:var(--brown-dk); }
+.stat-box .k{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+.cal{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+.cal .dow{ text-align:center; font-size:10px; color:var(--ink-faint); padding:3px 0; }
+.cal .day{ aspect-ratio:1; border-radius:6px; background:#fff; border:2px solid #F0E2CC;
+  display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-faint); }
+.cal .day.on{ background:var(--brown); color:#fff; border-color:var(--brown-dk); font-weight:700; }
+.cal .day.today{ border-color:var(--brown-dk); color:var(--brown-dk); font-weight:800; }
+.cal .day.empty{ background:transparent; border:none; }
+.io-row{ display:flex; gap:10px; margin-top:16px; }
+
+/* ============ toast ============ */
+#toast{ position:absolute; top:74px; left:50%; transform:translateX(-50%) translateY(-8px); z-index:60;
+  background:var(--paper); border:3px solid var(--line); border-radius:0;
+  padding:8px 16px; font-size:13px; font-weight:600; box-shadow:var(--shadow);
+  opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; white-space:nowrap; }
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* 小精灵标语气泡：出现在精灵右上角、绝不挡住精灵本体；右侧放不下时翻到左上角 */
+#sprite-speech{ position:absolute; z-index:45; max-width:200px; pointer-events:none;
+  background:var(--paper); border:3px solid var(--line); border-radius:12px;
+  padding:7px 12px; font-size:13px; font-weight:700; color:var(--brown-dk); text-align:center;
+  box-shadow:var(--shadow); line-height:1.35; white-space:normal;
+  transform:translate(0,-100%) scale(.9); opacity:0;
+  transition:opacity .22s ease, transform .22s ease; }
+#sprite-speech.show{ opacity:1; transform:translate(0,-100%) scale(1); }
+#sprite-speech.show.flip{ transform:translate(-100%,-100%) scale(1); }
+#sprite-speech::after{ content:""; position:absolute; left:16px; bottom:-12px;
+  border:6px solid transparent; border-top-color:var(--line); }
+#sprite-speech::before{ content:""; position:absolute; left:17px; bottom:-7px;
+  border:5px solid transparent; border-top-color:var(--paper); z-index:1; }
+#sprite-speech.flip::after{ left:auto; right:16px; }
+#sprite-speech.flip::before{ left:auto; right:17px; }
+
+/* 荣誉柜目标名牌：柜顶小木牌（DOM 文字，随画面缩放；写清柜子里是哪个目标的成就） */
+#medal-plate{ position:absolute; left:0; top:0; z-index:34; transform:translate(-50%,-50%);
+  background:linear-gradient(180deg,#F6E4C4,#EBD3A9);
+  border:2px solid #B98A5C; border-radius:9px;
+  padding:1px 8px; font-size:12px; font-weight:800; color:#7A5A3A;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  box-shadow:0 2px 0 rgba(140,90,43,.18);
+  pointer-events:none; user-select:none; font-family:inherit; }
+/* 小精灵状态牌：画面里专属区域（名字 / 心情 / 喂食机会）。位置由 positionSpriteCard()
+   按逻辑坐标计算（宽屏放最右墙面：画框下/摆件上；中窗降级左壁口袋；竖屏放可见区顶部），避开左栏/HUD/罐子/盆栽 */
+#sprite-card{ position:absolute; left:0; top:0; z-index:35; width:198px;
+  background:linear-gradient(180deg,#FFFDF7,#FFF1DC);
+  border:3px solid var(--line); border-radius:16px;
+  box-shadow:0 6px 0 rgba(140,90,43,.16), 0 9px 18px rgba(120,80,40,.18);
+  padding:10px 12px; color:var(--ink); user-select:none; font-family:inherit; }
+#sprite-card.compact{ width:150px; padding:8px 10px; }
+#sprite-card.compact .sc-name{ font-size:13px; }
+#sprite-card.compact .sc-mood{ font-size:12px; margin-top:6px; padding:4px 7px; }
+#sprite-card.compact .sc-feed{ font-size:11px; margin-top:6px; }
+#sprite-card.compact .sc-feed-btn{ font-size:13px; padding:7px 0; margin-top:7px; }
+#sprite-card.slim{ width:118px; padding:7px 9px; border-radius:14px; }
+#sprite-card.slim .sc-rename{ display:none; }        /* 窄屏隐藏改名按钮，点名字本身即可改名 */
+#sprite-card.slim .sc-feed{ display:none; }          /* 机会数并入喂食按钮文案 */
+#sprite-card.slim .sc-name{ font-size:13px; max-width:100%; }
+#sprite-card.slim .sc-mood{ font-size:12px; margin-top:6px; padding:4px 7px; }
+#sprite-card.slim .sc-feed-btn{ font-size:12px; padding:7px 0; margin-top:7px; }
+#sprite-card.night{ background:linear-gradient(180deg,#3A3357,#2E2848); border-color:#5A4F7A; color:#FDF3E0;
+  box-shadow:0 6px 0 rgba(0,0,0,.30), 0 9px 18px rgba(0,0,0,.35); }
+.sc-head{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+.sc-name{ font-size:15px; font-weight:800; cursor:pointer; display:flex; align-items:center;
+  min-width:0; max-width:132px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-name .ph{ color:#B89B7E; font-weight:700; font-size:13px; }
+#sprite-card.night .sc-name .ph{ color:#C9BEE6; }
+.sc-rename{ border:none; background:rgba(255,255,255,.6); border-radius:8px; font-size:13px;
+  cursor:pointer; padding:2px 6px; line-height:1; }
+#sprite-card.night .sc-rename{ background:rgba(255,255,255,.12); }
+.sc-mood{ display:flex; align-items:center; gap:6px; margin-top:8px;
+  background:rgba(255,255,255,.55); border-radius:10px; padding:5px 8px; font-size:13px; font-weight:700; }
+#sprite-card.night .sc-mood{ background:rgba(255,255,255,.10); }
+.sc-mood .me{ font-size:17px; }
+.sc-feed{ display:flex; align-items:center; justify-content:space-between; margin-top:8px;
+  font-size:12px; font-weight:700; opacity:.85; }
+.sc-feed-count{ font-size:14px; }
+.sc-feed-btn{ margin-top:9px; width:100%; border:none; cursor:pointer;
+  border-radius:12px; padding:9px 0; font-size:14px; font-weight:800; color:#6B3D12;
+  background:linear-gradient(180deg,#FFE6A6,#FFC56B); box-shadow:0 4px 0 #E0A23E;
+  display:flex; align-items:center; justify-content:center; gap:6px; transition:transform .08s ease; }
+.sc-feed-btn:active{ transform:translateY(2px); box-shadow:0 2px 0 #E0A23E; }
+.sc-feed-btn:disabled{ background:#E9DCC4; color:#A98F6F; box-shadow:0 4px 0 #CDBB9A; cursor:default; }
+
+/* 取名弹窗里的随机名字池 */
+.name-pool{ display:flex; flex-wrap:wrap; gap:8px; }
+.name-chip{ border:3px solid var(--line); border-radius:12px; background:var(--paper);
+  padding:6px 12px; font-size:13px; font-weight:700; color:var(--ink); cursor:pointer;
+  box-shadow:0 3px 0 rgba(140,90,43,.18); transition:transform .1s ease; }
+.name-chip:hover{ transform:translateY(-2px); border-color:var(--brown); }
+.name-chip:active{ transform:translateY(1px); }
+
+/* 成就弹窗里的勋章大图 + 详情 */
+.medal-show{ display:flex; justify-content:center; align-items:center; margin:6px 0 14px; }
+.medal-show canvas{ width:180px; height:180px; image-rendering:pixelated; }
+.stat-line{ font-size:14px; font-weight:700; color:var(--ink); padding:4px 0; }
+.medal-desc{ font-size:13px; line-height:1.7; color:var(--ink-soft); background:var(--cream);
+  border:2px solid var(--line); border-radius:12px; padding:12px 14px; margin-top:6px; }
+
+/* 移动端 / 竖屏优化：画面铺满、HUD 与左栏收紧、避让刘海 */
+@media (orientation: portrait){
+  /* 竖屏下舞台铺满视口（cover 裁剪），避免上下大片留白 */
+  #stage{ width:max(100vw, calc(100vh * 4 / 3)); height:max(100vh, calc(100vw * 3 / 4)); }
+}
+@media (max-width:560px){
+  #hud{ flex-wrap:wrap; gap:6px; padding:10px 10px; padding-top:max(10px, env(safe-area-inset-top)); }
+  .hud-left{ gap:6px; flex-wrap:wrap; }
+  .hud-right{ gap:6px; flex-wrap:wrap; }
+  .hud-streak .num{ font-size:18px; }
+  .hud-days{ font-size:12px; padding:5px 8px; }
+  .hud-days b{ font-size:16px; }
+  .hud-goal{ padding:5px 8px; }
+  .hud-goal .hg-name{ max-width:84px; font-size:12px; }
+  .hud-goal .hg-meta{ font-size:9px; }
+  .hud-total{ font-size:10px; padding:5px 8px; }
+  .icon-btn{ width:32px; height:32px; font-size:16px; }
+  #dock{ bottom:max(10px, env(safe-area-inset-bottom)); padding:5px 8px; }
+  .jar-btn{ width:36px; height:36px; }
+  #check-btn{ width:54px; height:54px; margin:0 2px; }
+  .step-btn{ width:54px; height:54px; }
+  #jar-rail{ width:72px; top:104px; gap:6px; }
+  .jar-card{ padding:6px 6px; }
+  .jar-card .jc-name{ font-size:10px; }
+  .jar-card .jc-meta{ font-size:9px; }
+  .rail-add{ height:34px; font-size:20px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="stage"></canvas>
+  <canvas id="sprite-layer"></canvas>
+
+  <!-- 三步悬浮食材（打卡流程中显示） -->
+  <div id="step-bar">
+    <button class="step-btn next" data-step="1"><canvas width="80" height="80"></canvas><span class="no">1</span></button>
+    <button class="step-btn" data-step="2"><canvas width="80" height="80"></canvas><span class="no">2</span></button>
+    <button class="step-btn" data-step="3"><canvas width="80" height="80"></canvas><span class="no">3</span></button>
+  </div>
+
+  <!-- 顶部 HUD -->
+    <header id="hud">
+    <div class="hud-left">
+      <div class="hud-card hud-streak">
+        <svg class="hud-star" viewBox="0 0 24 24"><path d="M12 2 l2.8 5.8 6.4.8 -4.7 4.4 1.2 6.3 -5.7 -3.1 -5.7 3.1 1.2 -6.3 -4.7 -4.4 6.4 -.8 Z" fill="#FFD66B" stroke="#E0A93E" stroke-width="1"/></svg>
+        <div class="num" id="hud-streak-num">0</div>
+      </div>
+      <div class="hud-card hud-days"><span class="emoji">🌟</span>已累计打卡 <b id="hud-days-num">0</b> 天</div>
+      <div class="hud-card hud-goal"><span class="hg-emoji">🎯</span><div class="hg-txt"><div class="hg-name" id="hud-goal-name">—</div><div class="hg-meta" id="hud-goal-meta">连续 0 · 累计 0 天</div></div></div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-card hud-total">共 <b id="hud-total-num">0</b> 枚</div>
+      <button class="icon-btn" id="btn-stats" title="统计与日历">📊</button>
+      <button class="icon-btn" id="btn-night" title="切换白天 / 夜晚">🌙</button>
+      <button class="icon-btn" id="btn-help" title="玩法说明">❓</button>
+    </div>
+  </header>
+
+  <!-- 左侧目标栏：点击切换目标 -->
+  <nav id="jar-rail">
+    <div id="rail-list"></div>
+    <button class="rail-add" id="btn-add" title="新建目标罐">＋</button>
+  </nav>
+
+  <!-- 底部 dock：仅打卡按钮 -->
+  <nav id="dock">
+    <button id="check-btn"><span class="glyph" id="check-glyph">🍩</span><span class="txt">打卡</span></button>
+  </nav>
+
+  <!-- 弹层 -->
+  <div id="modal-layer"></div>
+  <div id="toast"></div>
+
+  <!-- 小精灵标语气泡（偶尔在头顶冒出） -->
+  <div id="sprite-speech"></div>
+  <!-- 荣誉柜目标名牌（DOM 文字，避免 canvas 中文方框） -->
+  <div id="medal-plate"></div>
+  <!-- 小精灵状态牌：左下角专属区域（名字 / 心情 / 喂食机会）；点名字或 ✏️ 可改名 -->
+  <div id="sprite-card">
+    <div class="sc-head">
+      <span class="sc-name" id="sc-name">罐罐</span>
+      <button class="sc-rename" id="sc-rename" title="给小精灵改名" type="button">✏️</button>
+    </div>
+    <div class="sc-mood"><span class="me" id="sc-mood-emoji">😊</span><span id="sc-mood-text">心情不错</span></div>
+    <div class="sc-feed"><span>喂食机会</span><span class="sc-feed-count" id="sc-feed-count">🍖 ×0</span></div>
+    <button class="sc-feed-btn" id="sc-feed-btn" type="button">🍯 喂食</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   星星罐罐 —— 把坚持变成看得见的资产
+   单文件 / 零依赖 / 离线可用。像素风 + 三步小游戏打卡。
+   ============================================================ */
+
+/* ---------- 工具 ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,t) => a + (b-a)*t;
+const rnd = (a,b) => a + Math.random()*(b-a);
+const rint = (a,b) => Math.floor(rnd(a,b+1));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const todayStr = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+const dayDiff = (a,b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const ease = {
+  out:  t => 1 - Math.pow(1-t, 3),
+  back: t => { const c=1.70158; return 1 + (c+1)*Math.pow(t-1,3) + c*Math.pow(t-1,2); },
+  elastic: t => t===0||t===1 ? t : Math.pow(2,-10*t)*Math.sin((t*10-0.75)*(2*Math.PI/3)) + 1
+};
+
+/* ---------- 主题与食物图鉴 ----------
+   每款食物 = 胚体(base) + 涂层(coat) + 点缀(top) 三件套，
+   三件套各是一个像素绘制函数，参数 G(x,y,w,h,color) 在 16x16 网格中作画。
+   theme.color 决定罐子/dock/环境光；decor 决定房间装饰类型。 */
+const THEMES = [
+{ id:"dessert", name:"甜品站", color:"#FFA9C9", dark:"#E57FA3", glyph:"🧁", decor:"tray",
+  desc:"甜甜圈与奶油的世界", foods:["donut","pudding","cake"] },
+{ id:"seafood", name:"海鲜小馆", color:"#93C9F7", dark:"#5FA3DE", glyph:"🍣", decor:"fish",
+  desc:"刺身与海洋的气息", foods:["sushi","shrimp","riceball"] },
+{ id:"fruit", name:"水果摊", color:"#8FDCC2", dark:"#5CB89A", glyph:"🍉", decor:"basket",
+  desc:"四季水果大丰收", foods:["watermelon","grape","orange"] },
+{ id:"breakfast", name:"早餐铺", color:"#FFD66B", dark:"#E0A93E", glyph:"🥞", decor:"sun",
+  desc:"元气满满的早晨", foods:["pancake","toast","eggtoast"] },
+{ id:"bbq", name:"烧烤摊", color:"#FF9A5C", dark:"#E07A3C", glyph:"🍢", decor:"lantern",
+  desc:"烟火气的小串", foods:["lamb","mushroom","corn"] },
+{ id:"oden", name:"关东煮小屋", color:"#E0A458", dark:"#8C5A2B", glyph:"🍲", decor:"oden",
+  desc:"暖呼呼的深夜食堂", foods:["egg","radish","fishcake"] },
+];
+const THEME_MAP = Object.fromEntries(THEMES.map(t=>[t.id,t]));
+
+/* 食物三件套绘制（16x16 网格，中心 8,8） */
+const FOODS = {
+/* ---- 甜品站 ---- */
+donut:{ name:"甜甜圈", emoji:"🍩", grid:70, cx:35, ringR:21.5,
+  /* 逐格距离场画圆环：网格从 28 提升到 70 → 放大后每个艺术像素更小、圆环更细腻 */
+  ring:(x,y)=>{ const dx=x-35, dy=y-35; return Math.sqrt(dx*dx+dy*dy); },
+  base:G=>{
+    const R=31, hr=12.25;
+    for(let y=0;y<70;y++) for(let x=0;x<70;x++){
+      const d=Math.sqrt((x+0.5-35)**2+(y+0.5-35)**2);
+      if(d>R+1.0 || d<hr-0.6) continue;
+      if(d>R-0.5){ G(x,y,1,1,"#5C4A3A"); continue; }      /* 外圈连续墨边 */
+      const dx=x+0.5-35, dy=y+0.5-35;
+      const t=(-dx-dy+45)/90;
+      const col = t>0.72 ? "#FFE3B0" : t>0.4 ? "#F5C97E" : "#E0A86A";
+      G(x,y,1,1,col);
+    }
+  },
+  coat:G=>{
+    const R=31, hr=12.25;
+    for(let y=0;y<70;y++) for(let x=0;x<70;x++){
+      const d=Math.sqrt((x+0.5-35)**2+(y+0.5-35)**2);
+      if(d>R-0.5 || d<hr-0.4) continue;                  /* 不盖住墨边与孔 */
+      const dx=x+0.5-35, dy=y+0.5-35;
+      const t=(-dx-dy+45)/90;
+      const col = t>0.72 ? "#FFD6E8" : t>0.4 ? "#FFB3D4" : "#FF9EC4";
+      G(x,y,1,1,col);
+    }
+  },
+  top:G=>{ /* 糖针（五色板，沿环带确定性排布，只落在糖霜上） */
+    const SPR=["#FFFFFF","#FF8FB8","#6FA8E8","#A78BE0","#5FBFA0"];
+    for(let k=0;k<28;k++){
+      const a=k/28*Math.PI*2, r=21+(k%3-1)*2.75;
+      const x=Math.round(35+Math.cos(a)*r), y=Math.round(35+Math.sin(a)*r);
+      const d=Math.sqrt((x+0.5-35)**2+(y+0.5-35)**2);
+      if(d>12 && d<28) G(x,y,1,1, SPR[k%5]);
+    }
+  } },
+pudding:{ name:"布丁杯", emoji:"🍮", grid:32, cx:16,
+  base:G=>{ G(8,14,16,12,"#FFF3D8"); G(8,14,16,2,"#FFFFFF"); G(6,26,20,4,"#E8D9BE");
+    G(10,10,12,4,"#FFFFFF"); },
+  coat:G=>{ G(10,12,12,10,"#FFC96E"); G(10,12,12,2,"#FFD98F"); G(12,18,8,4,"#FFB84D"); },
+  top:G=>{ G(14,6,4,4,"#FF6FA5"); G(22,8,2,2,"#FF6FA5"); G(10,8,2,2,"#FF6FA5"); } },
+cake:{ name:"纸杯蛋糕", emoji:"🧁", grid:32, cx:16,
+  base:G=>{ for(const r of [[8,18,16,10],[10,16,12,2]]) G(...r,"#C98A5E");
+    G(8,18,16,2,"#E0A876"); G(6,28,20,2,"#B5774C"); },
+  coat:G=>{ G(6,12,20,6,"#FFC2D8"); G(8,10,16,2,"#FFD9E6"); G(4,16,24,2,"#FFB3CF"); },
+  top:G=>{ G(16,4,2,6,"#FF6FA5"); G(16,4,2,2,"#FF6FA5"); G(22,6,2,2,"#FF6FA5");
+    G(10,6,2,2,"#FFE066"); G(24,10,2,2,"#FFE066"); } },
+/* ---- 海鲜小馆 ---- */
+sushi:{ name:"寿司", emoji:"🍣", grid:32, cx:16,
+  base:G=>{ G(6,12,20,10,"#FFFBF2"); G(6,12,20,2,"#FFFFFF"); G(6,20,20,2,"#F0E8D8");
+    G(10,22,12,2,"#E8DCC8"); },
+  coat:G=>{ G(6,8,20,6,"#FF8FA8"); G(8,6,16,2,"#FFA9BC"); G(4,14,24,2,"#FF7E99"); },
+  top:G=>{ G(12,6,2,4,"#2E4B3A"); G(18,6,2,4,"#2E4B3A"); G(14,8,4,2,"#FFE066"); } },
+shrimp:{ name:"甜虾", emoji:"🍤", grid:32, cx:16,
+  base:G=>{ for(const r of [[10,16,12,8],[8,20,20,6],[12,24,8,4]]) G(...r,"#FFC4A8");
+    G(8,20,20,2,"#FFD9C2"); G(10,16,12,2,"#FFD9C2"); },
+  coat:G=>{ G(10,16,12,2,"#FF9E7A"); G(8,20,20,2,"#FFB394"); G(12,24,8,2,"#FF9E7A"); },
+  top:G=>{ G(20,10,2,2,"#FF6FA5"); G(24,12,2,2,"#FF6FA5"); G(8,12,2,2,"#7FD8F0"); } },
+riceball:{ name:"饭团", emoji:"🍙", grid:32, cx:16,
+  base:G=>{ G(8,10,16,6,"#FFFBF2"); G(6,16,20,10,"#FFFBF2"); G(8,24,16,4,"#F5EFE2");
+    G(8,10,16,2,"#FFFFFF"); },
+  coat:G=>{ G(6,16,20,10,"#3E5C4B"); G(8,10,16,6,"#3E5C4B"); G(8,10,16,2,"#51765F"); },
+  top:G=>{ G(14,14,4,6,"#FFFBF2"); G(12,12,2,2,"#FFFBF2"); G(18,12,2,2,"#FFFBF2"); } },
+/* ---- 水果摊 ---- */
+watermelon:{ name:"西瓜", emoji:"🍉", grid:32, cx:16,
+  base:G=>{ G(6,14,20,12,"#FF8FA8"); G(6,14,20,2,"#FFB3C4"); G(8,24,16,4,"#E87A95");
+    G(6,14,20,2,"#FFFFFF"); },
+  coat:G=>{ G(10,10,12,14,"#FF6B8A"); G(10,10,12,2,"#FF8FA8");
+    G(12,12,2,2,"#2E4B3A"); G(18,14,2,2,"#2E4B3A"); G(14,18,2,2,"#2E4B3A"); },
+  top:G=>{ G(12,8,2,2,"#2E4B3A"); G(16,6,2,2,"#2E4B3A"); G(20,8,2,2,"#2E4B3A"); } },
+grape:{ name:"葡萄", emoji:"🍇", grid:32, cx:16,
+  base:G=>{ const p=[[10,12],[14,10],[18,12],[8,16],[12,14],[16,14],[20,16],[10,20],[14,18],[18,20],[12,24],[16,24]];
+    for(const [x,y] of p){ G(x,y,4,4,"#A98BD8"); G(x,y,2,2,"#C3AEF2"); } },
+  coat:G=>{ G(14,6,2,6,"#8C6FB8"); G(12,6,6,2,"#A98BD8"); },
+  top:G=>{ G(10,14,2,2,"#E0D2F5"); G(16,20,2,2,"#E0D2F5"); G(20,12,2,2,"#E0D2F5"); } },
+orange:{ name:"橙子", emoji:"🍊", grid:32, cx:16,
+  base:G=>{ G(8,10,16,16,"#FFB347"); G(8,10,16,2,"#FFC96E"); G(10,24,12,2,"#E89A2E"); },
+  coat:G=>{ G(8,10,16,4,"#FF9A2E"); G(8,10,4,16,"#FF9A2E"); G(20,10,4,16,"#FF9A2E"); },
+  top:G=>{ G(14,4,4,4,"#7FB069"); G(16,8,2,2,"#8FC17B"); } },
+/* ---- 早餐铺 ---- */
+pancake:{ name:"松饼", emoji:"🥞", grid:32, cx:16,
+  base:G=>{ for(const r of [[8,14,16,4],[6,18,20,4],[8,22,16,4]]) G(...r,"#E8B45E");
+    G(8,14,16,2,"#F5C97E"); G(6,26,20,2,"#C98A4E"); },
+  coat:G=>{ G(8,12,16,2,"#FFD66B"); G(6,16,20,2,"#FFD66B");
+    G(12,14,8,4,"#C98A5E"); },
+  top:G=>{ G(14,8,4,4,"#FF6FA5"); G(20,8,2,2,"#FF6FA5"); G(10,10,2,2,"#7FD8F0"); } },
+toast:{ name:"吐司", emoji:"🍞", grid:32, cx:16,
+  base:G=>{ G(6,8,20,18,"#F5C97E"); G(8,6,16,2,"#FFD98F"); G(6,8,20,2,"#FFD98F");
+    G(6,24,20,2,"#D9A856"); },
+  coat:G=>{ G(10,10,12,10,"#FFE9B8"); G(10,10,12,2,"#FFFFFF"); },
+  top:G=>{ G(14,6,4,4,"#FF6FA5"); G(20,12,2,2,"#FF6FA5"); G(12,16,2,2,"#7FB069"); } },
+eggtoast:{ name:"蛋吐司", emoji:"🍳", grid:32, cx:16,
+  base:G=>{ G(6,8,20,18,"#F5C97E"); G(6,8,20,2,"#FFD98F"); G(6,24,20,2,"#D9A856"); },
+  coat:G=>{ G(8,10,14,12,"#FFF3D8"); G(8,10,14,2,"#FFFFFF"); },
+  top:G=>{ G(12,12,6,6,"#FFD66B"); G(12,12,6,2,"#FFE9A8"); G(20,16,2,2,"#2E4B3A"); } },
+/* ---- 烧烤摊 ---- */
+lamb:{ name:"羊肉串", emoji:"🍢", grid:32, cx:16,
+  base:G=>{ const p=[[12,10],[12,16],[12,22]]; for(const [x,y] of p){ G(x,y,8,6,"#C96A5E"); G(x,y,8,2,"#E08A7E"); }
+    G(6,8,2,20,"#8C6A4E"); },
+  coat:G=>{ G(12,10,8,2,"#A84E44"); G(12,16,8,2,"#A84E44"); G(12,22,8,2,"#A84E44"); },
+  top:G=>{ G(20,10,2,2,"#7FB069"); G(22,18,2,2,"#7FB069"); G(10,24,2,2,"#7FB069"); } },
+mushroom:{ name:"烤香菇", emoji:"🍄", grid:32, cx:16,
+  base:G=>{ G(6,14,20,6,"#C98A6E"); G(6,14,20,2,"#E0A876"); G(10,20,12,6,"#B5774C");
+    G(10,20,12,2,"#C98A6E"); },
+  coat:G=>{ G(6,14,20,2,"#FFD66B"); G(10,20,12,2,"#FFD66B"); },
+  top:G=>{ G(12,10,2,2,"#7FB069"); G(18,10,2,2,"#7FB069"); G(14,16,2,2,"#FFE066"); } },
+corn:{ name:"烤玉米", emoji:"🌽", grid:32, cx:16,
+  base:G=>{ G(8,8,16,20,"#FFD66B"); G(8,8,16,2,"#FFE9A8"); G(8,26,16,2,"#E0A93E"); },
+  coat:G=>{ for(let i=0;i<4;i++) for(let j=0;j<5;j++) if((i+j)%2===0) G(8+j*4,8+i*5,2,2,"#E0A93E"); },
+  top:G=>{ G(14,4,4,4,"#7FB069"); G(22,6,4,4,"#8FC17B"); } },
+/* ---- 关东煮小屋 ---- */
+egg:{ name:"溏心卤蛋", emoji:"🥚", grid:32, cx:16,
+  base:G=>{ G(8,8,16,18,"#FFFBF2"); G(6,10,20,14,"#FFFBF2"); G(8,8,16,2,"#FFFFFF");
+    G(10,24,12,4,"#F5EFE2");
+    G(12,12,8,10,"#FFC96E"); G(12,12,8,2,"#FFD9A0"); },
+  coat:G=>{ G(8,6,16,4,"#A96A3B"); G(6,10,20,4,"#B07A48"); G(6,10,2,14,"#A96A3B"); G(24,10,2,14,"#A96A3B");
+    G(10,6,6,2,"#C08A56"); },
+  top:G=>{ G(10,18,2,2,"#2E4B3A"); G(20,20,2,2,"#2E4B3A"); G(16,8,2,2,"#FFFFFF"); G(12,12,2,2,"#FFFFFF"); } },
+radish:{ name:"味噌萝卜", emoji:"🍥", grid:32, cx:16,
+  base:G=>{ G(6,10,20,16,"#FDFBF6"); G(6,10,20,2,"#FFFFFF"); G(6,24,20,2,"#EDE6D8");
+    G(10,10,2,16,"#F0EBDF"); G(16,10,2,16,"#F0EBDF"); },
+  coat:G=>{ G(6,8,20,6,"#E4C89A"); G(6,8,20,2,"#EFD9B2"); G(20,14,6,6,"#D9B47C"); G(20,20,6,4,"#D9B47C");
+    G(8,8,4,2,"#F5E4C4"); },
+  top:G=>{ G(10,8,2,2,"#7FB069"); G(16,8,2,2,"#8FC17B"); G(12,12,2,2,"#7FB069"); G(22,16,2,2,"#8FC17B"); } },
+fishcake:{ name:"照烧鱼糕", emoji:"🍥", grid:32, cx:16,
+  base:G=>{ G(8,12,16,12,"#FFE4EE"); G(8,12,16,2,"#FFF2F7"); G(8,22,16,2,"#FFD6E4");
+    G(10,14,12,2,"#FFB3CF"); G(10,18,12,2,"#FFB3CF"); G(22,12,4,12,"#FFD6E4"); },
+  coat:G=>{ G(8,12,16,2,"#B5651D"); G(8,22,16,2,"#B5651D"); G(22,12,4,2,"#C97B2E");
+    G(12,12,6,2,"#E09A4A"); },
+  top:G=>{ G(6,16,20,2,"#C89B5A"); G(12,8,2,2,"#7FB069"); G(20,18,2,2,"#8FC17B"); G(14,22,2,2,"#7FB069"); } },
+};
+/* 第 10 枚限定款：彩虹涂层（只落在糖霜环带，不走样） */
+function rainbowCoat(G, foodId){
+  const f = FOODS[foodId]; const G2=f.grid||16; const OFF=f.cx||8;
+  const cols=["#FF9EC4","#FFD66B","#8FDCC2","#93C9F7","#C3AEF2","#FF9A5C"];
+  if(f.ring){ /* 有环食物：沿糖霜环带按 y 行铺彩虹（甜甜圈） */
+    for(let y=0;y<G2;y++) for(let x=0;x<G2;x++){
+      const d=f.ring(x+0.5,y+0.5);
+      if(d>5 && d<11){ const bi=Math.floor(y/G2*cols.length)%cols.length; G(x,y,1,1,cols[bi]); }
+    }
+  } else { /* 无环食物：沿用旧版分段 */
+    const bands=[ {y:4,segs:[[6,4]]}, {y:5,segs:[[5,6]]}, {y:6,segs:[[5,6]]},
+      {y:7,segs:[[4,2],[10,2]]}, {y:8,segs:[[4,2],[10,2]]},
+      {y:9,segs:[[5,6]]}, {y:10,segs:[[5,6]]}, {y:11,segs:[[6,4]]} ];
+    bands.forEach((b,bi)=>{ const c=cols[bi%cols.length];
+      for(const [x,w] of b.segs) for(let k=0;k<w;k++) G(x+k,b.y,1,1,c); });
+  }
+}
+
+/* ---------- 糖霜配方：混色不设限 ----------
+   每枚入罐时记录一份配方（风格 + 色值 + 种子），刷新/导出不变形；
+   主题色只是默认倾向，搭配色每次现抽，罐子里没有两枚相同的。 */
+const FROST_STYLES = ["solid","half","swirl","carnival","drip"];
+/* 糖霜双色配对（初版 demo 的五组 pastel 对） */
+const FROST_PAIRS = {
+  dessert:["#FFA9C9","#FF8FB8"], seafood:["#93C9F7","#6FA8E8"],
+  fruit:["#8FDCC2","#5FBFA0"], breakfast:["#FFD66B","#F2BC45"],
+  bbq:["#FF9A5C","#E07A3C"], oden:["#E0A458","#C97B2E"],
+};
+const FROST_ACCENTS = ["#93C9F7","#FFD66B","#8FDCC2","#C3AEF2","#FF9A5C","#F5C97E","#FFFFFF"];
+function shadeHex(hex,f){ const n=parseInt(hex.slice(1),16);
+  return "#"+[(n>>16&255),(n>>8&255),(n&255)]
+    .map(v=>Math.round(clamp(v*f,0,255)).toString(16).padStart(2,"0")).join(""); }
+function lumHex(hex){ const n=parseInt(hex.slice(1),16);
+  return .299*(n>>16&255)+.587*(n>>8&255)+.114*(n&255); }
+function genFrost(jar){
+  const theme = THEME_MAP[jar.themeId] || THEMES[0];
+  const pr = FROST_PAIRS[theme.id] || [theme.color, theme.dark];
+  return { style: pick(FROST_STYLES), c1: pr[0],
+    c2: Math.random()<.5 ? pr[1] : pick(FROST_ACCENTS.filter(c=>c!==pr[0])),
+    c3: pick(["#FFFFFF","#FFF3C9"]),
+    seed: Math.floor(Math.random()*9999) };
+}
+function paintCoatVariant(G, foodId, frost){
+  const f = FOODS[foodId]; if(!f) return;
+  const G2 = f.grid || 16;                       /* 食物的本地网格分辨率（甜甜圈=70，其他=32） */
+  const OFF = f.cx || 8;                         /* 食物本地网格的中心（甜甜圈=35，其他=16） */
+  /* 1. 记录默认涂层色（按亮度排序，保证明暗结构不变） */
+  const defs = [];
+  f.coat((x,y,w,h,col)=>{ if(!defs.includes(col)) defs.push(col); });
+  defs.sort((a,b)=>lumHex(a)-lumHex(b));
+  /* 2. 变体色板逐色映射 */
+  const map = {};
+  if(frost.style==="half"){ /* 双色对半：defs 按明暗交替分到两个色系，系内越亮越浅 */
+    const p1 = [frost.c1, shadeHex(frost.c1,1.12), shadeHex(frost.c1,1.25)];
+    const p2 = [frost.c2, shadeHex(frost.c2,1.12), shadeHex(frost.c2,1.25)];
+    defs.forEach((c,i)=>{ map[c] = (i%2===0?p1:p2)[Math.min(i>>1,2)]; });
+  } else { /* 单色系：主色=c1，原越亮的细节越浅（保持明暗结构，不出脏色） */
+    const p = [frost.c1, shadeHex(frost.c1,1.1), shadeHex(frost.c1,1.22), shadeHex(frost.c1,1.35)];
+    defs.forEach((c,i)=>{ map[c] = p[Math.min(i,p.length-1)]; });
+  }
+  /* 3. 过映射重画涂层，同时记录覆盖 Mask（按食物本地网格） */
+  const mask = new Set();
+  const rec = (gx,gy,gw,gh,col)=>{
+    for(let yy=Math.floor(gy); yy<Math.ceil(gy+gh); yy++)
+      for(let xx=Math.floor(gx); xx<Math.ceil(gx+gw); xx++)
+        if(xx>=0&&xx<G2&&yy>=0&&yy<G2) mask.add(yy*G2+xx);
+    G(gx,gy,gw,gh, map[col]||col);
+  };
+  f.coat(rec);
+  /* 4. 风格叠加层：只落在涂层覆盖处，食物形状不走样（种子固定，重渲染一致） */
+  const sr = seedRand(frost.seed||1);
+  const at = (xx,yy)=>mask.has((yy|0)*G2+(xx|0));
+  const dot = (xx,yy,col)=>{ if(at(xx,yy)) G(xx,yy,1,1,col); };
+  const hi = G2-2;
+  if(frost.style==="swirl"){ /* 大理石纹：一道波浪线 */
+    const ph = sr()*6;
+    for(let yy=2; yy<hi; yy++){
+      const xx = Math.round(OFF + (G2/2-2)*Math.sin(yy*.75+ph));
+      dot(xx,yy, shadeHex(frost.c2,1.12)); dot(xx+1,yy, frost.c2);
+    }
+  } else if(frost.style==="carnival"){ /* 彩针狂欢：密撒彩色糖针 */
+    const cols = [frost.c2, frost.c3, shadeHex(frost.c1,1.28)];
+    for(let yy=2; yy<hi; yy++) for(let xx=2; xx<hi; xx++)
+      if(at(xx,yy) && sr()<.17) G(xx,yy,1,1, cols[Math.floor(sr()*3)]);
+  } else if(frost.style==="drip"){ /* 半淋流淌：底缘挂下垂坠 */
+    for(let xx=2; xx<hi; xx++){
+      let bottom = -1;
+      for(let yy=hi; yy>=0; yy--) if(at(xx,yy)){ bottom = yy; break; }
+      if(bottom>=0 && bottom<hi-1 && sr()<.7){
+        const len = 1 + Math.floor(sr()*3);
+        for(let k=1;k<=len;k++) G(xx, bottom+k, 1, 1, shadeHex(frost.c1,.78));
+      }
+    }
+  }
+}
+
+/* ---------- 状态与存储 ---------- */
+const LS_KEY = "starjar.v2";
+/* 沙箱环境（如内置预览 iframe 缺 allow-same-origin）访问 localStorage 直接抛
+   SecurityError，会让启动流程整个中断 —— 所有存取统一走下面的安全函数，
+   不可用时自动降级为「内存模式」：应用照常跑，只是进度不落盘。 */
+const LS_OK = (()=>{ try{ localStorage.getItem("__probe"); return true; }catch(e){ return false; } })();
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+let state = null;
+function defaultJar(name, themeId, foodId){
+  const theme = THEME_MAP[themeId] || THEMES[0];
+  foodId = foodId || pick(theme.foods);   /* 招牌食物系统预存，建罐不强制选，每日打卡随机抽一款 */
+  return { id:"j"+Date.now().toString(36)+Math.floor(Math.random()*99),
+    name, themeId, foodId, created:todayStr(),
+    count:0, streak:0, best:0, lastDate:"", todayProgress:0, todayDate:"",
+    history:{}, items:[], medals:{}, archives:[] };
+}
+function defaultState(){
+  return { jars:[ defaultJar("我的第一个罐","dessert","donut") ],
+    activeJar:0, globalStreak:0, lastGlobalDate:"", seenHelp:false, night:false,
+    spriteName:"罐罐", spriteNamed:false, feedChances:0 };
+}
+function load(){
+  try{ const raw = lsGet(LS_KEY); if(raw){ state = JSON.parse(raw);
+    normalizeStateJars();
+    if(typeof state.night!=="boolean") state.night = false; return; } }catch(e){}
+  /* 旧版本（starjar.v1）数据迁移：字段宽容搬移 + 缺省兜底，
+     用户累积的罐子和打卡记录绝不因版本升级丢失（v1 原数据保留不删） */
+  try{
+    const old = JSON.parse(lsGet("starjar.v1") || "null");
+    if(old && Array.isArray(old.jars) && old.jars.length){
+      const jars = old.jars.map(j=>{
+        const nj = Object.assign(defaultJar(j.name||"我的罐", j.themeId||"dessert", j.foodId||"donut"), j);
+        nj.items = (Array.isArray(j.items) ? j.items : []).map(it =>
+          (it && it.frost) ? it : Object.assign({foodId:nj.foodId, seed:7, special:0}, it, {frost: genFrost(nj)}));
+        nj.history = (j.history && typeof j.history==="object") ? j.history : {};
+        nj.todayProgress = 0; nj.todayDate = "";   /* 跨版本不恢复半成品进度，明天可重新打卡 */
+        return nj;
+      });
+      state = { jars,
+        activeJar: Math.min(old.activeJar||0, jars.length-1),
+        globalStreak: old.globalStreak||0, lastGlobalDate: old.lastGlobalDate||"",
+        seenHelp: !!old.seenHelp, night:false };
+      normalizeStateJars();
+      return;
+    }
+  }catch(e){}
+  state = defaultState();
+}
+/* 罐子数据规范化 + 旧存档「满罐自动封存」迁移：
+   补齐 archives / items / medals 缺省；超过 JAR_CAP 的旧罐子静默封存（不播放动画），
+   连续天数、勋章、历史全部保留——用户累积的记录绝不因版本升级丢失 */
+function normalizeStateJars(){
+  if(!state || !Array.isArray(state.jars)) return;
+  state.jars.forEach(j=>{
+    if(!j) return;
+    if(!Array.isArray(j.items)) j.items = [];
+    if(!Array.isArray(j.archives)) j.archives = [];
+    if(!j.medals || typeof j.medals!=="object") j.medals = {};
+    if(j.items.length >= JAR_CAP){
+      j.archives.push({ id:"a"+j.id+"-"+j.archives.length, sealedAt:j.lastDate||todayStr(),
+        count:j.items.length, items:j.items.slice(-JAR_CAP), themeId:j.themeId });
+      j.items = [];
+    }
+  });
+}
+let SAVE_DISABLED = false;   /* 预览/演示模式下禁止写盘，避免覆盖真实存档 */
+function save(){ if(SAVE_DISABLED) return; lsSet(LS_KEY, JSON.stringify(state)); }
+function activeJar(){ return state.jars[state.activeJar] || state.jars[0]; }
+/* ============================================================
+   音效 —— 8-bit chiptune，WebAudio 现场合成，零音频文件
+   ============================================================ */
+let AC = null;
+function ac(){ if(!AC){ try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ AC=null; } }
+  if(AC && AC.state==="suspended") AC.resume(); return AC; }
+function beep(freq, dur, type="square", vol=.12, when=0){
+  const c = ac(); if(!c) return;
+  const t = c.currentTime + when;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(.0001, t+dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t+dur+.02);
+}
+function slide(f1, f2, dur, type="square", vol=.1){
+  const c = ac(); if(!c) return;
+  const t = c.currentTime;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1,t); o.frequency.linearRampToValueAtTime(f2, t+dur);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001, t+dur);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+.02);
+}
+const SFX = {
+  pop(){ beep(520,.07,"square",.1); beep(780,.09,"square",.09,.06); },
+  squish(){ slide(300,160,.14,"triangle",.14); },
+  coat(){ slide(440,660,.5,"sine",.07); beep(880,.05,"square",.04,.45); },
+  sprinkle(){ for(let i=0;i<5;i++) beep(1200+rint(0,500), .04, "square", .045, i*.05); },
+  jar(){ beep(140,.16,"triangle",.2); beep(90,.22,"sine",.16,.03); },
+  sparkle(){ [880,1108,1318,1760].forEach((f,i)=>beep(f,.12,"sine",.08,i*.07)); },
+  bad(){ beep(200,.1,"sawtooth",.08); beep(160,.12,"sawtooth",.07,.1); },
+  cheer(){ [523,659,784,1046].forEach((f,i)=>beep(f,.14,"square",.1,i*.09)); },
+  pat(){ beep(660,.06,"sine",.1); beep(520,.08,"sine",.09,.07); },
+  step(){ beep(320,.03,"square",.03); },
+};
+
+/* ============================================================
+   画布舞台 —— 逻辑分辨率 800x600，居中缩放适配
+   像素风核心：场景先画到 400x300 低分辨率离屏，再 nearest
+   放大到主画布 —— 颗粒感由此而来，所有绘制用逻辑坐标不变。
+   ============================================================ */
+const W = 800, H = 600;
+const PIX = 2;                                /* 1 个像素块 = 2 逻辑单位（比初版更精细，颗粒更细） */
+const stage = $("#stage");
+const ctx = stage.getContext ? stage.getContext("2d") : null;
+const spriteLayer = $("#sprite-layer");
+const slctx = spriteLayer && spriteLayer.getContext ? spriteLayer.getContext("2d") : null;
+const sctx = ctx;                              /* 场景直接画主画布。旧版的「离屏缩小→非整数倍放大」
+                                                  两段采样是画面发糊的根源，彻底移除。 */
+/* 全局整数对齐变换：所有 fillRect 先对齐 PIX 网格，再按 K 取整到物理像素 ——
+   无论窗口多大都落在整数像素上，硬边清晰，绝不半像素插值。 */
+let CUR = { K:1, VX:0, VY:0 };
+function setT(k, vx, vy){ CUR = { K:k, VX:vx, VY:vy }; }
+let view = { scale:1, ox:0, oy:0 };
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const r = stage.getBoundingClientRect();
+  const cw = r.width || window.innerWidth || W;
+  stage.width = Math.max(2, Math.round(cw * dpr));
+  stage.height = Math.max(2, Math.round(stage.width * H / W));
+  /* 精灵顶层画布与主画布同尺寸、同位置 → 两者精确重叠 */
+  if(spriteLayer){ spriteLayer.width = stage.width; spriteLayer.height = stage.height; }
+  if(slctx) slctx.imageSmoothingEnabled = false;
+  setT(stage.width / W, 0, 0);
+  bgKey = ""; jarKey = "";                     /* 缓存按新尺寸重建 */
+  layoutOverlays();
+}
+window.addEventListener("resize", resize);
+
+/* 场景关键坐标（逻辑坐标，画面 800×600） */
+const JAR = { x:400, y:236, w:196, h:264 };      // 罐口中心 / 罐体宽高（初版 demo 比例：约占画面 1/4 宽，坐落地面）
+const JAR_CAP = 50;                              // 单罐总容量（两档密度）：≤20 枚大颗（4 枚×5 排），第 21 枚起整罐压缩为小颗（5 枚×10 排），满 50 枚封存成礼品罐
+const PACK_LV = [                                // 罐内堆叠两档密度参数（跨档时 packAnim 连续插值，重排无跳变）
+  { target:50, perRow:4, colW:44, rowH:38 },     // 第一档：20 枚内，大颗
+  { target:26, perRow:5, colW:34, rowH:22 },     // 第二档：21–50 枚，压缩小颗
+];
+let packAnim = null;                             // { t, dur } 跨档压缩演出（第 21 枚落罐时触发，全部旧食物一起变小）
+function packLevel(n){ return n<=20 ? 0 : 1; }   // 堆叠档位：≤20 枚大颗 / 更多则压缩小颗
+const TRAY = { x:400, y:222 };                    // 打卡台：上移到瓶口上方，食物放大组装（仍保持半屏大）
+const SPRITE_HOME = { x:400, y:233 };             // 精灵罐口位（坐在罐口上，初版 demo）
+const MAKING_SPRITE = { x:690, y:492 };           // 打卡时精灵旁观位（站地板右侧看）
+const ANCHORS = [                                  // 精灵漫游锚点（已避开盆栽/摆件/罐前，防穿身）
+  { x:400, y:233 }, { x:90, y:492 }, { x:230, y:492 },
+  { x:770, y:490 }, { x:655, y:492 }, { x:745, y:492 },
+];
+/* 精灵落点禁区：地面装饰物 + 罐子正前方（精灵是前景层，踩进去会被"穿身"） */
+const PROP_BOXES = [
+  { x:118, y:430, w:64,  h:70 },   // 盆栽（含叶冠）
+  { x:540, y:452, w:80,  h:48 },   // 主题地面摆件
+  { x:292, y:430, w:216, h:70 },   // 罐子正前方（防挡罐主角）
+];
+function avoidProps(x, y){
+  if(y < 400) return { x, y };                    // 空中/罐口高度不参与规避
+  const M = 26;                                   // 精灵半宽余量
+  const boxes = PROP_BOXES.slice();
+  const jar = activeJar();                        // 地上封存的礼品罐也是障碍（防精灵穿身）
+  if(jar && jar.archives) for(const g of giftSlots(jar))
+    boxes.push({ x:g.x-26*g.scale, y:g.baseY-54*g.scale, w:52*g.scale, h:56*g.scale });
+  for(const b of boxes){
+    if(x > b.x-M && x < b.x+b.w+M && y > b.y-24 && y < b.y+b.h+24){
+      const dl = x-(b.x-M), dr = (b.x+b.w+M)-x;
+      x += (dl < dr ? -dl : dr);                  // 平移到较近的一侧之外
+    }
+  }
+  return { x, y };
+}
+
+/* ============================================================
+   像素绘制：把 16x16 网格的三件套画到画布上
+   maskFn(gx,gy)：可选格子级遮罩（糖霜绕圈 Reveal 用，硬边无矢量路径）
+   ============================================================ */
+function paintFood(c, foodId, cx, cy, cell, stageLv, special, frost, maskFn){
+  const f = FOODS[foodId]; if(!f) return;
+  const ov = f.cx || 8;                                   /* 食物本地网格的中心 */
+  /* 格子 → 整数物理像素（端点差法：相邻格子无缝无重叠，永不半像素） */
+  const gx0 = v => Math.round(snap(v)*CUR.K) + CUR.VX;
+  const gy0 = v => Math.round(snap(v)*CUR.K) + CUR.VY;
+  const G = (gx,gy,gw,gh,color) => {
+    c.fillStyle = color;
+    if(maskFn){
+      const x0=Math.floor(gx), x1=Math.ceil(gx+gw), y0=Math.floor(gy), y1=Math.ceil(gy+gh);
+      const cs = Math.max(PIX, snap(cell)||PIX);
+      for(let yy=y0; yy<y1; yy++) for(let xx=x0; xx<x1; xx++){
+        if(!maskFn(xx,yy)) continue;
+        const px = cx + (xx-ov)*cell, py = cy + (yy-ov)*cell;
+        c.fillRect(gx0(px), gy0(py), Math.max(1, gx0(px+cs)-gx0(px)), Math.max(1, gy0(py+cs)-gy0(py)));
+      }
+      return;
+    }
+    const px = cx + (gx-ov)*cell, py = cy + (gy-ov)*cell;
+    const pw = Math.max(PIX, snap(gw*cell)||PIX), ph = Math.max(PIX, snap(gh*cell)||PIX);
+    c.fillRect(gx0(px), gy0(py), Math.max(1, gx0(px+pw)-gx0(px)), Math.max(1, gy0(py+ph)-gy0(py)));
+  };
+  if(stageLv>=1) f.base(G);
+  if(stageLv>=2){
+    if(special && special%10===0) rainbowCoat(G, foodId); /* 第 10 枚：彩虹限定款 */
+    else if(frost) paintCoatVariant(G, foodId, frost);    /* 混色糖霜配方 */
+    else f.coat(G);
+  }
+  if(stageLv>=3) f.top(G);
+}
+/* 把任意食物渲染成「清爽小图标」到指定 canvas（用于三步打卡按钮）。
+   做法：先在 grid×PIX 分辨率的离屏画布上用 paintFood 以 1:1 像素绘制，
+   再等比缩放进目标 canvas（最近邻硬边）—— 与网格分辨率无关，网格再大也不会越界变空。 */
+function drawFoodIcon(canvas, foodId, stageLv, special, frost){
+  const f = FOODS[foodId]; if(!f) return;
+  const off = f.grid * PIX;
+  if(!drawFoodIcon._off || drawFoodIcon._off.width !== off){
+    drawFoodIcon._off = document.createElement("canvas");
+    drawFoodIcon._off.width = off; drawFoodIcon._off.height = off;
+  }
+  const oc = drawFoodIcon._off.getContext ? drawFoodIcon._off.getContext("2d") : null;
+  if(!oc) return;
+  oc.clearRect(0,0,off,off); oc.imageSmoothingEnabled = false;
+  const oldCUR = CUR; CUR = { K:1, VX:0, VY:0 };        /* 离屏用单位变换，避免主画布 CUR 污染 */
+  paintFood(oc, foodId, off/2, off/2, PIX, stageLv, special, frost);
+  CUR = oldCUR;
+  const c = canvas.getContext ? canvas.getContext("2d") : null; if(!c) return;
+  c.clearRect(0,0,canvas.width,canvas.height); c.imageSmoothingEnabled = false;
+  const s = Math.min(canvas.width, canvas.height) - 6;
+  c.drawImage(drawFoodIcon._off, (canvas.width-s)/2, (canvas.height-s)/2, s, s);
+}
+/* 糖霜绕圈 Reveal：从顶部起顺时针扫过的扇形遮罩（格子中心判定，支持不同分辨率） */
+function wedgeMask(q, off=8, rad=10){
+  const swept = q*Math.PI*2, r2 = rad*rad;
+  return (gx,gy)=>{
+    const dx = gx+.5-off, dy = gy+.5-off;
+    if(dx*dx+dy*dy > r2) return false;
+    let a = Math.atan2(dy,dx) + Math.PI/2;
+    if(a < 0) a += Math.PI*2;
+    return a <= swept + 1e-9;
+  };
+}
+/* 种子化随机（罐内堆叠位置稳定） */
+function seedRand(seed){ let s = seed*9301+49297; return ()=>{ s=(s*9301+49297)%233280; return s/233280; }; }
+
+/* ============================================================
+   场景静态层（墙/地板/装饰）—— 预渲染到离屏画布
+   ============================================================ */
+function drawRoom(c, theme, night){
+  const FLOOR_Y = 500;
+  const wall1 = night ? "#3A3357" : "#FFF6E3";
+  const wall2 = night ? "#322B4C" : "#FBEFD6";
+  const wood1 = night ? "#6E5436" : "#C8956A";
+  const wood2 = night ? "#5A4429" : "#B57F55";
+  const wood3 = night ? "#8A6E4A" : "#DECBA8";
+  /* 墙：暖奶油底 + 细密点阵（夜晚切换为暖紫暗调） */
+  P(c, 0, 0, W, FLOOR_Y, wall1);
+  for(let gy=0; gy<FLOOR_Y; gy+=4){
+    for(let gx=((gy/4)%2 ? 0 : 2); gx<W; gx+=8) P(c, gx, gy, 4, 4, wall2);
+  }
+  /* 地板：暖木地板（夜晚更暗） */
+  P(c, 0, FLOOR_Y, W, 26, wood1);
+  P(c, 0, FLOOR_Y+26, W, 7, wood2);
+  for(let x=0; x<W; x+=60) P(c, x, FLOOR_Y, 5, 33, wood3);
+  drawWindow(c, night);
+  drawFramePicture(c, theme);
+  drawFloorPlant(c, 150, FLOOR_Y);
+  drawThemeDecor(c, theme, night);
+  if(night){
+    /* 夜色氛围：整屋压一层暖蓝暗调（在罐子之前画，罐子仍明亮治愈） */
+    P(c, 0, 0, W, H, "rgba(28,26,64,.34)");
+  }
+}
+function drawWindow(c, night){
+  const sx=52, sy=82, sw=116, sh=110;
+  if(night){
+    /* 夜空：深蓝底 + 几颗星 + 月牙 */
+    P(c, sx, sy, sw, sh, "#27314F");
+    const stars=[[70,108],[92,128],[120,104],[140,142],[80,152],[112,160],[150,118],[64,140]];
+    for(const [x,y] of stars) P(c, x, y, 3, 3, "#FDF6C8");
+    pCircle(c, 132, 112, 16, "#FBEFB0"); pCircle(c, 138, 108, 16, "#27314F"); /* 月牙 */
+    pCircle(c, 126, 110, 3, "#E9DD92");
+  } else {
+    /* 天空：蓝底 + 细 dot + 方块白云（初版 demo 的窗） */
+    P(c, sx, sy, sw, sh, "#BEE3F5");
+    for(let gy=84; gy<188; gy+=8){
+      const start = 54 + ((gy/8|0)%2 ? 4:0);
+      for(let gx=start; gx<166; gx+=8) P(c, gx, gy, 4, 4, "#D6EEF9");
+    }
+    P(c, 72, 122, 34, 8, "#FFFFFF");
+    P(c, 80, 116, 20, 6, "#FFFFFF");
+    P(c, 86, 130, 24, 8, "#FFFFFF");
+    P(c, 138, 100, 10, 3, "#FFD66B"); P(c, 141.5, 96.5, 3, 10, "#FFD66B"); /* 窗内小星 */
+  }
+  /* 窗框 + 十字格（深木色） */
+  P(c, sx, sy, sw, 6, "#96613C"); P(c, sx, sy+sh-6, sw, 6, "#96613C");
+  P(c, sx, sy, 6, sh, "#96613C"); P(c, sx+sw-6, sy, 6, sh, "#96613C");
+  P(c, sx+sw/2-2, sy, 4, sh, "#96613C"); P(c, sx, sy+sh/2-2, sw, 4, "#96613C");
+}
+/* 治愈装饰：顶部淡紫花环 + 漂浮小星星（含淡紫）+ 悬挂小星星/小爱心（主循环每帧绘制，不进缓存，可动） */
+const DECOR_STARS = [[210,40],[276,66],[380,34],[524,62],[560,38],[640,74],[700,46],
+  [240,112],[520,106],[660,118],[330,142],[150,46]];
+const DECOR_STAR_COLS = ["#FFD66B","#C3AEF2","#FFA9C9","#8FDCC2","#93C9F7","#C3AEF2","#FFD66B",
+  "#C3AEF2","#FFA9C9","#93C9F7","#FFD66B","#C3AEF2"];
+/* 悬挂小星星 / 小爱心（轻微摇摆 + 暖光晕；夜晚更亮）
+   位置避让荣誉柜（柜体 x 294–506）：左边爱心挂窗右上方、右边星星挂画框上方，都完整可见 */
+const DECOR_CHARMS = [
+  {x:180, phase:0.0, type:"heart", col:"#FFA9C9"},
+  {x:620, phase:1.7, type:"star",  col:"#FFD66B"},
+];
+const GARLAND = []; for(let x=110; x<=710; x+=75) GARLAND.push(x);
+function drawDecorOverlay(c, night, t){
+  drawGarland(c, t);                          /* 顶部淡紫小花环 */
+  /* 漂浮闪烁小星星（避开左栏与罐子区域），含淡紫色 */
+  for(let i=0;i<DECOR_STARS.length;i++){
+    const x=DECOR_STARS[i][0], y=DECOR_STARS[i][1];
+    const big = (Math.sin(t*2.4 + i*0.9) > -0.2);   /* 利落 twinkle */
+    const col = DECOR_STAR_COLS[i];
+    P(c, x, y, 2, 2, col);
+    if(big){ P(c, x-3, y, 1, 2, col); P(c, x+3, y, 1, 2, col); P(c, x, y-3, 2, 1, col); P(c, x, y+3, 2, 1, col); }
+  }
+  /* 悬挂小星星 / 小爱心（轻微摇摆 + 暖光晕；夜晚更亮） */
+  for(const C of DECOR_CHARMS){
+    drawCharm(c, C.x + Math.sin(t*0.9 + C.phase)*4, 18, C, night);
+  }
+  if(night){
+    /* 夜萤火虫：几只缓缓飘 */
+    for(let i=0;i<5;i++){
+      const fx = 210 + i*110 + Math.sin(t*0.6 + i)*16;
+      const fy = 360 + Math.cos(t*0.5 + i*1.3)*26;
+      const on = (Math.sin(t*3 + i*2) > 0) ? 1 : 0.3;
+      P(c, Math.round(fx), Math.round(fy), 2, 2, "rgba(255,236,150,"+on+")");
+    }
+  }
+}
+/* ============================================================
+   里程碑勋章 —— 每个目标独立累计，达到阈值后瓶子上方的荣誉柜里生成可爱勋章（每款造型/配色/标语都不同）
+   ============================================================ */
+/* 里程碑定义（按累计打卡天数升序）：每款都尽量不一样 */
+const MILESTONES = [
+  { days:10,  title:"小有所成", slogan:"坚持了 10 天，好习惯开始发芽啦！",
+    shape:"macaron", color:"#FFA9C9", accent:"#FFE3EE",
+    desc:"十天前你种下了一颗坚持的种子，如今已悄悄冒出嫩芽。万事开头难，你挺过了最难的头十天。" },
+  { days:30,  title:"初露锋芒", slogan:"坚持了 30 天，你已经很厉害了！",
+    shape:"cupcake", color:"#FFF6EA", accent:"#F46D9B",
+    desc:"一个月的持续付出，让「坚持」这件事变得不再困难。你已经把目标揉进了日常里。" },
+  { days:50,  title:"半百之约", slogan:"坚持了 50 天，温柔地善待自己。",
+    shape:"lollipop", color:"#93C9F7", accent:"#EAF6FF",
+    desc:"五十个日夜的陪伴，是你对自己的温柔承诺。习惯不再是任务，而是生活的一部分。" },
+  { days:100, title:"百日筑基", slogan:"坚持了 100 天，了不起的里程碑！",
+    shape:"donut", color:"#F46D9B", accent:"#FFF6E8",
+    desc:"一百天，足够让一个微小的习惯长成你生活的一部分。扎实的根基，是你给自己最好的礼物。" },
+  { days:200, title:"持之以恒", slogan:"坚持了 200 天，这就是定力！",
+    shape:"icecream", color:"#C3AEF2", accent:"#FFF6EA",
+    desc:"两百天如一日，你的定力比想象中更坚定。时间会奖励那些不肯轻易放弃的人。" },
+  { days:365, title:"岁岁坚守", slogan:"走过了整整一年，向你致敬！",
+    shape:"cake", color:"#FFD1E3", accent:"#FFF6EA",
+    desc:"四季轮转三百六十五天，这份坚持本身就是一座奖杯。你用行动证明了：长期主义，真的有用。" },
+];
+let medalHits = [];   /* 本帧已绘制勋章的命中区（逻辑坐标），供点击检测 */
+/* ===== 甜品勋章（套装 B）：马卡龙 / 纸杯蛋糕 / 棒棒糖 / 甜甜圈 / 冰淇淋 / 生日蛋糕 ===== */
+/* 马卡龙：两片壳 + 中间奶油层 */
+function pMacaron(c, cx, cy, R, m){
+  pEllipse(c, cx, cy-0.30*R, 1.12*R, 0.55*R, m.color);
+  P(c, cx-1.06*R, cy-0.06*R, 2.12*R, 0.30*R, m.accent);
+  pEllipse(c, cx, cy+0.32*R, 1.12*R, 0.55*R, m.color);
+  pEllipse(c, cx, cy+0.48*R, 0.92*R, 0.28*R, _mix(m.color,"#000000",.12));
+}
+/* 纸杯蛋糕：奶油山 + 纸杯 + 樱桃（整体控制在 ±1.05R 内，小柜格不溢出） */
+function pCupcake(c, cx, cy, R, m){
+  const top = cy+0.26*R, bot = cy+0.94*R, steps = Math.max(1, Math.round((bot-top)/PIX));
+  for(let i=0;i<=steps;i++){ const t=i/steps, w=0.62*R*(1-t*0.30); P(c, cx-w, top+(bot-top)*t, 2*w, PIX, "#FAC775"); }
+  P(c, cx-0.60*R, top, 1.20*R, 0.16*R, "#EF9F27");
+  pCircle(c, cx, cy-0.16*R, 1.00*R, m.color);
+  pCircle(c, cx-0.42*R, cy-0.40*R, 0.52*R, m.color);
+  pCircle(c, cx+0.40*R, cy-0.38*R, 0.50*R, m.color);
+  pCircle(c, cx, cy-0.68*R, 0.42*R, m.color);
+  pCircle(c, cx, cy-0.86*R, 0.22*R, m.accent);
+}
+/* 棒棒糖：圆糖 + 螺旋 + 小棍（短棍，整体控制在 ±1.15R 内） */
+function pLollipop(c, cx, cy, R, m){
+  P(c, cx-0.07*R, cy+0.18*R, 0.14*R, 0.62*R, "#C8956A");
+  pCircle(c, cx, cy-0.20*R, 0.92*R, m.color);
+  pRing(c, cx, cy-0.20*R, 0.58*R, m.accent);
+  pCircle(c, cx, cy-0.20*R, 0.22*R, m.accent);
+}
+/* 甜甜圈：面团圈 + 糖霜 + 糖粒 */
+function pDonut(c, cx, cy, R, m){
+  pCircle(c, cx, cy, 0.95*R, "#FAC775");
+  pCircle(c, cx, cy-0.06*R, 0.78*R, m.color);
+  pCircle(c, cx, cy, 0.27*R, "#FFF6E8");
+  P(c, cx-0.11*R, cy-0.44*R, 0.08*R, 0.08*R, "#FFD66B");
+  P(c, cx+0.26*R, cy-0.30*R, 0.08*R, 0.08*R, "#93C9F7");
+  P(c, cx+0.34*R, cy+0.20*R, 0.08*R, 0.08*R, "#FFD66B");
+  P(c, cx-0.30*R, cy+0.24*R, 0.08*R, 0.08*R, "#93C9F7");
+}
+/* 冰淇淋：蛋筒 + 双球 */
+function pIcecream(c, cx, cy, R, m){
+  const top = cy+0.10*R, bot = cy+0.98*R, steps = Math.max(1, Math.round((bot-top)/PIX));
+  for(let i=0;i<=steps;i++){ const t=i/steps, w=0.52*R*(1-t*0.34); P(c, cx-w, top+(bot-top)*t, 2*w, PIX, "#FAC775"); }
+  P(c, cx-0.50*R, top, 1.00*R, 0.14*R, "#EF9F27");
+  pCircle(c, cx-0.26*R, cy-0.26*R, 0.54*R, m.color);
+  pCircle(c, cx+0.30*R, cy-0.16*R, 0.48*R, m.accent);
+  pCircle(c, cx-0.40*R, cy-0.44*R, 0.12*R, "#FFFFFF");
+}
+/* 生日蛋糕：两层 + 奶油 + 蜡烛火苗 */
+function pCake(c, cx, cy, R, m){
+  P(c, cx-0.92*R, cy+0.28*R, 1.84*R, 0.56*R, m.color);
+  P(c, cx-0.92*R, cy+0.24*R, 1.84*R, 0.12*R, "#FFF6EA");
+  P(c, cx-0.62*R, cy-0.14*R, 1.24*R, 0.46*R, m.color);
+  P(c, cx-0.62*R, cy-0.20*R, 1.24*R, 0.12*R, "#FFF6EA");
+  P(c, cx-0.06*R, cy-0.60*R, 0.12*R, 0.44*R, "#93C9F7");
+  pCircle(c, cx, cy-0.70*R, 0.13*R, "#FFD66B");
+  pCircle(c, cx-0.40*R, cy+0.10*R, 0.09*R, "#F46D9B");
+  pCircle(c, cx+0.40*R, cy+0.10*R, 0.09*R, "#93C9F7");
+}
+/* 单枚勋章：逻辑坐标 (cx,cy) 绘制；scale 放大用（成就弹窗大图） */
+function drawMedal(c, cx, cy, m, t, night, scale){
+  const sc = scale||1, R = 20*sc;
+  /* 暖光晕（小尺寸柜格里不画，避免溢出格子） */
+  if(sc >= 1){
+    const glow = night ? 0.20 : 0.10;
+    for(let r=R+12*sc; r>=R; r-=4*sc) pCircle(c, cx, cy, r, "rgba(255,225,170,"+(glow*(1-(R+12*sc-r)/(12*sc))).toFixed(3)+")");
+  }
+  if(m.shape==="macaron")      pMacaron(c, cx, cy, R, m);
+  else if(m.shape==="cupcake") pCupcake(c, cx, cy, R, m);
+  else if(m.shape==="lollipop")pLollipop(c, cx, cy, R, m);
+  else if(m.shape==="donut")   pDonut(c, cx, cy, R, m);
+  else if(m.shape==="icecream")pIcecream(c, cx, cy, R, m);
+  else if(m.shape==="cake")    pCake(c, cx, cy, R, m);
+}
+/* 瓶子上方「荣誉柜」：大号木柜，陈列【当前目标】独有的里程碑勋章（每个目标独立计数）
+   几何约束（像素级实测）：
+   - 柜顶檐口 y=39：让开顶部花环最低点（中心花底≈34，含摆动余量）
+   - 柜底 y=120：让开精灵跳跃最高点（星尖≈125.4，hop 峰值 16px）
+   - 柜体宽 212 ≈ 瓶身宽 196，居中于罐口 x=400，不占多余墙面 */
+const MEDAL_CAB = { x:294, y:48, w:212, h:72 };
+function drawMedals(c, night){
+  medalHits = [];
+  const t = performance.now()/1000;
+  const jar = activeJar();
+  const cab = MEDAL_CAB;
+  /* 柜体：奶油底 + 木框 + 顶部小檐 + 内侧背板 */
+  pRoundRect(c, cab.x, cab.y, cab.w, cab.h, 8, "#F5E6CC");
+  pRoundRectStroke(c, cab.x, cab.y, cab.w, cab.h, 8, "#96613C", 3);
+  pRoundRect(c, cab.x-8, cab.y-9, cab.w+16, 9, 4, "#C8956A");
+  pRoundRect(c, cab.x+5, cab.y+5, cab.w-10, cab.h-10, 6, "#FBF0DC");
+  /* 目标名牌是 DOM 元素 #medal-plate，挂在柜顶檐口上（中文不走 canvas，防方框） */
+  /* 格线：3 列 × 2 行 */
+  const gx0 = cab.x+5, gy0 = cab.y+5, gw = cab.w-10, gh = cab.h-10;
+  const colW = gw/3, rowH = gh/2;
+  P(c, gx0+colW-1, gy0+3, 2, gh-6, "#D9BE93");
+  P(c, gx0+colW*2-1, gy0+3, 2, gh-6, "#D9BE93");
+  P(c, gx0+3, gy0+rowH-1, gw-6, 2, "#D9BE93");
+  /* 六格：按天数从左到右、上到下排（10/30/50 上排，100/200/365 下排） */
+  MILESTONES.forEach((m, idx)=>{
+    const gx = gx0 + colW*((idx%3)+0.5), gy = gy0 + rowH*(((idx/3)|0)+0.5);
+    if(jar && jar.medals && jar.medals[m.days]){
+      drawMedal(c, gx, gy, m, t, night, 0.68);
+      medalHits.push({ x:gx, y:gy, r:18, days:m.days, jarId:jar.id });
+    } else {
+      pCircle(c, gx, gy, 8, "#E9E2D2");
+      pRing(c, gx, gy, 8, "#C9BFA8");
+      pCircle(c, gx, gy, 3, "#DCD3BE");
+    }
+  });
+}
+/* 花环弧线：以画面中心 410 为最低点、两端齐平的对称轻微下垂（不再歪斜） */
+const garlandY = x => { const f = (x - 410) / 300; return 12 + 16 * (1 - f*f); };
+/* 顶部淡紫小花环：一串小五瓣花，沿对称下垂弧均匀坐着（绳穿花心，随风轻晃） */
+function drawGarland(c, t){
+  const Y = x => garlandY(x) + Math.round(Math.sin(t*1.2 + x*0.02)*1.2);  /* 极轻微起伏，不破坏对称 */
+  /* 主绳：连接各节点（同在一条对称抛物线上 → 平滑下垂弧） */
+  for(let i=0;i<GARLAND.length-1;i++){
+    pLine(c, GARLAND[i], Y(GARLAND[i]), GARLAND[i+1], Y(GARLAND[i+1]), "#B79AD0", 2);
+  }
+  /* 花朵：正中坐在绳上（绳穿花心），随风轻轻晃 */
+  for(let i=0;i<GARLAND.length;i++){
+    const x=GARLAND[i], y=Y(x);
+    P(c, x, y, 3, 3, "#C3AEF2");
+    P(c, x-3, y, 2, 2, "#C3AEF2"); P(c, x+3, y, 2, 2, "#C3AEF2");
+    P(c, x, y-3, 2, 2, "#C3AEF2"); P(c, x, y+3, 2, 2, "#C3AEF2");
+    P(c, x-1, y-1, 2, 2, "#FFD66B");   /* 花心 */
+  }
+}
+/* 悬挂小星星 / 小爱心：淡紫吊绳 + 暖光晕 + 轻微摇摆 */
+function drawCharm(c, x, topY, C, night){
+  const glow = night ? 0.26 : 0.12;
+  const cy = topY + 40;
+  for(let r=22; r>=10; r-=6) pCircle(c, x, cy, r, "rgba(255,225,170,"+(glow*(1-(22-r)/22)).toFixed(3)+")");
+  P(c, x, topY, 2, 22, "#B79AD0");                 /* 吊绳（淡紫） */
+  if(C.type==="heart"){
+    pHeart(c, x, cy, 11, C.col); pHeart(c, x, cy-1, 5, "#FFFFFF");
+  } else {
+    pStar(c, x, cy, 13, C.col); pStar(c, x, cy, 6, "#FFF3C9");
+  }
+}
+/* 墙上小画框：初版 demo 右上角那种简单可爱图案（主题色小星 + 小爱心） */
+function drawFramePicture(c, theme){
+  const fx=596, fy=92, fw=112, fh=86;
+  pRoundRect(c, fx, fy, fw, fh, 6, "#FFF6E8");
+  pRoundRectStroke(c, fx, fy, fw, fh, 6, "#96613C", 5);
+  pStar(c, fx+fw/2, fy+fh/2-8, 16, theme.color);
+  pStar(c, fx+fw/2, fy+fh/2-8, 8, "#FFF3C9");
+  pHeart(c, fx+fw/2, fy+fh/2+22, 9, theme.dark);
+}
+/* 地板绿植：初版 demo 那种小盆栽（木盆 + 两簇绿叶） */
+function drawFloorPlant(c, x, fy){
+  pRoundRect(c, x-16, fy-26, 32, 26, 4, "#C8956A");
+  P(c, x-16, fy-26, 32, 6, "#B57F55");
+  pEllipse(c, x-8, fy-34, 12, 18, "#8FDCC2");
+  pEllipse(c, x+8, fy-34, 12, 18, "#5FBFA0");
+  pEllipse(c, x, fy-44, 9, 16, "#7FD0B0");
+}
+function drawThemeDecor(c, theme){
+  const x = 580, fy = 500;   /* 地面右侧小摆件：初版 demo 风格的地面物件，不抢罐子 */
+  if(theme.decor==="oden"){
+    /* 小汤锅（蒸汽由粒子系统负责） */
+    pRoundRect(c, x-26, fy-30, 52, 30, 6, "#9AA7B0");
+    pRoundRect(c, x-26, fy-30, 52, 8, 4, "#C2CDD4");
+    P(c, x-32, fy-24, 10, 5, "#9AA7B0"); P(c, x+22, fy-24, 10, 5, "#9AA7B0");
+  }
+  else if(theme.decor==="fish"){
+    pEllipse(c, x, fy-18, 22, 12, "#93C9F7");
+    P(c, x+18, fy-24, 12, 18, "#93C9F7");
+    pCircle(c, x-10, fy-20, 3, "#5C4A3A");
+  }
+  else if(theme.decor==="basket"){
+    pRoundRect(c, x-24, fy-26, 48, 26, 5, "#C98A5E");
+    pRoundRectStroke(c, x-24, fy-26, 48, 26, 5, "#B5774C", 3);
+    pCircle(c, x-10, fy-30, 9, "#FF6B8A"); pCircle(c, x+10, fy-30, 9, "#FFB347"); pCircle(c, x, fy-36, 8, "#A98BD8");
+  }
+  else if(theme.decor==="sun"){
+    pCircle(c, x, fy-22, 16, "#FFD66B");
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
+      pLine(c, x+Math.cos(a)*20, fy-22+Math.sin(a)*20, x+Math.cos(a)*27, fy-22+Math.sin(a)*27, "#FFE9A8", 4); }
+  }
+  else if(theme.decor==="lantern"){
+    pLine(c, x, fy-44, x, fy-30, "#C97B2E", 2);
+    pRoundRect(c, x-13, fy-30, 26, 30, 7, "#FF9A5C");
+    P(c, x-11, fy-20, 22, 3, "#E07A3C"); P(c, x-11, fy-9, 22, 3, "#E07A3C");
+  }
+  else { /* dessert：小蛋糕 */
+    pRoundRect(c, x-20, fy-26, 40, 26, 5, "#FFE3C2");
+    pRoundRectStroke(c, x-20, fy-26, 40, 26, 5, "#D9B98C", 3);
+    pRoundRect(c, x-20, fy-32, 40, 9, 4, "#FF9EC4");
+    pCircle(c, x, fy-34, 5, "#FF6FA5");
+    pCircle(c, x-6, fy-38, 3, "#FFF3C9");
+  }
+}
+/* ============ 像素绘制原语（对齐 PIX 网格 + 整数物理像素，绝不做半像素插值） ============ */
+const snap = v => Math.round(v/PIX)*PIX;
+function P(c,x,y,w,h,col){
+  const x0 = Math.round(snap(x)*CUR.K) + CUR.VX, y0 = Math.round(snap(y)*CUR.K) + CUR.VY;
+  const x1 = Math.round(snap(x+w)*CUR.K) + CUR.VX, y1 = Math.round(snap(y+h)*CUR.K) + CUR.VY;
+  c.fillStyle = col;
+  c.fillRect(x0, y0, Math.max(1, x1-x0), Math.max(1, y1-y0));
+}
+function pCircle(c,cx,cy,r,col){
+  const ri = Math.max(PIX, Math.round(r));
+  for(let dy=-ri; dy<=ri; dy+=PIX){
+    const dx = Math.floor(Math.sqrt(Math.max(0, ri*ri - dy*dy))/PIX)*PIX;
+    P(c, cx-dx, cy+dy, dx*2+PIX, PIX, col);
+  }
+}
+function pEllipse(c,cx,cy,rx,ry,col){
+  const ryi = Math.max(PIX, Math.round(ry)), rxi = Math.max(PIX, Math.round(rx));
+  for(let dy=-ryi; dy<=ryi; dy+=PIX){
+    const dx = Math.floor(Math.sqrt(Math.max(0, 1-(dy/ryi)*(dy/ryi)))*rxi/PIX)*PIX;
+    P(c, cx-dx, cy+dy, dx*2+PIX, PIX, col);
+  }
+}
+function pRing(c,cx,cy,r,col){
+  const ri = Math.max(PIX, Math.round(r));
+  for(let dy=-ri; dy<=ri; dy+=PIX){
+    const dx = Math.floor(Math.sqrt(Math.max(0, ri*ri - dy*dy))/PIX)*PIX;
+    if(dx>0){ P(c, cx-dx, cy+dy, PIX, PIX, col); P(c, cx+dx-PIX, cy+dy, PIX, PIX, col); }
+    else P(c, cx-PIX/2, cy+dy, PIX, PIX, col);
+  }
+}
+function pRingEllipse(c,cx,cy,rx,ry,col){
+  const ryi = Math.max(PIX, Math.round(ry)), rxi = Math.max(PIX, Math.round(rx));
+  for(let dy=-ryi; dy<=ryi; dy+=PIX){
+    const dx = Math.round(Math.sqrt(Math.max(0, 1-(dy/ryi)*(dy/ryi)))*rxi/PIX)*PIX;
+    if(dx>0){ P(c, cx-dx, cy+dy, PIX, PIX, col); P(c, cx+dx-PIX, cy+dy, PIX, PIX, col); }
+    else P(c, cx-PIX/2, cy+dy, PIX, PIX, col);
+  }
+}
+function _rrInset(y0,y1,yy,ri){
+  if(yy < y0+ri){ const dy = y0+ri-yy-PIX/2; return ri - Math.floor(Math.sqrt(Math.max(0,ri*ri-dy*dy))/PIX)*PIX; }
+  if(yy >= y1-ri){ const dy = yy-(y1-ri)-PIX/2; return ri - Math.floor(Math.sqrt(Math.max(0,ri*ri-dy*dy))/PIX)*PIX; }
+  return 0;
+}
+function pRoundRect(c,x,y,w,h,r,col){
+  const x0=snap(x), y0=snap(y), x1=snap(x+w), y1=snap(y+h);
+  if(x1<=x0||y1<=y0) return;
+  const ri = Math.min(snap(r)||0, (x1-x0)/2, (y1-y0)/2);
+  for(let yy=y0; yy<y1; yy+=PIX){
+    const inset = Math.max(0, Math.min(_rrInset(y0,y1,yy,ri), (x1-x0)/2-PIX));
+    P(c, x0+inset, yy, x1-x0-inset*2, PIX, col);
+  }
+}
+function pRoundRectStroke(c,x,y,w,h,r,col,th=PIX){
+  const x0=snap(x), y0=snap(y), x1=snap(x+w), y1=snap(y+h);
+  if(x1<=x0||y1<=y0) return;
+  const ri = Math.min(snap(r)||0, (x1-x0)/2, (y1-y0)/2);
+  for(let yy=y0; yy<y1; yy+=PIX){
+    const inset = Math.max(0, Math.min(_rrInset(y0,y1,yy,ri), (x1-x0)/2-PIX));
+    if(yy<y0+th*2 || yy>=y1-th*2) P(c, x0+inset, yy, x1-x0-inset*2, PIX, col);
+    else { P(c, x0+inset, yy, th*2, PIX, col); P(c, x1-inset-th*2, yy, th*2, PIX, col); }
+  }
+}
+function pLine(c,x1,y1,x2,y2,col,w=PIX){
+  const steps = Math.max(1, Math.ceil(Math.hypot(x2-x1,y2-y1)/PIX));
+  for(let i=0;i<=steps;i++){ const t=i/steps; P(c, lerp(x1,x2,t), lerp(y1,y2,t), w, w, col); }
+}
+function pVBand(c,x,y,w,h,stops){ /* 垂直色带：替代 linearGradient */
+  const y0=snap(y), y1=snap(y+h), total=Math.max(1,y1-y0);
+  for(let yy=y0; yy<y1; yy+=PIX){
+    const t=(yy-y0)/total;
+    let col=stops[stops.length-1][1];
+    for(const s of stops){ if(t<=s[0]){ col=s[1]; break; } }
+    P(c,x,yy,w,PIX,col);
+  }
+}
+function pStar(c,cx,cy,r,col){ /* 四角星（菱形，复古游戏语汇） */
+  const ri = Math.max(PIX, Math.round(r/PIX)*PIX);
+  for(let dy=-ri; dy<=ri; dy+=PIX){
+    const half = Math.round((1-Math.abs(dy)/ri)*ri/PIX)*PIX;
+    if(half<=0) continue;
+    P(c, cx-half, cy+dy, half*2, PIX, col);
+  }
+}
+function pHeart(c,cx,cy,r,col){
+  const ri = Math.max(PIX, Math.round(r));
+  for(let dy=-ri; dy<=ri; dy+=PIX){
+    const ny = dy/ri;
+    const half = ny<0 ? Math.sqrt(Math.max(0,1-ny*ny*1.8))*ri*.95
+                      : Math.sqrt(Math.max(0,1-ny*ny))*ri*(1-ny*.6);
+    const hs = Math.round(half/PIX)*PIX;
+    if(hs<=0) continue;
+    P(c, cx-hs, cy+dy, hs*2, PIX, col);
+  }
+}
+function pSmile(c,cx,cy,w,col,down=1){
+  for(let i=0;i<=8;i++){ const t=i/8; P(c, cx-w/2+w*t, cy+Math.sin(t*Math.PI)*w*.28*down, PIX, PIX, col); }
+}
+function pZzz(c,x,y,s,col){ /* 像素 z 字（3x3 点阵，代替文字） */
+  P(c, x, y, 3*s, s, col); P(c, x+s, y+s, s, s, col); P(c, x, y+2*s, 3*s, s, col);
+}
+/* 像素数字（3x5 点阵，计数器牌用） */
+const GLYPH_DIGITS = {
+  "0":["111","101","101","101","111"], "1":["110","010","010","010","111"],
+  "2":["111","001","111","100","111"], "3":["111","001","111","001","111"],
+  "4":["101","101","111","001","001"], "5":["111","100","111","001","111"],
+  "6":["111","100","111","101","111"], "7":["111","001","001","010","010"],
+  "8":["111","101","111","101","111"], "9":["111","101","111","001","111"],
+};
+function pDigits(c, str, x, y, cell, col){
+  let cx = x;
+  for(const ch of str){
+    const g = GLYPH_DIGITS[ch];
+    if(g){ for(let r=0;r<5;r++) for(let q=0;q<3;q++)
+      if(g[r][q]==="1") P(c, cx+q*cell, y+r*cell, cell, cell, col); }
+    cx += cell*4;
+  }
+}
+/* 工具：像素星星 & 颜色透明度 */
+function drawPixelStar(c,cx,cy,r,col,on){ pStar(c,cx,cy,r,col); }
+function hexA(hex,a){ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; }
+/* ============================================================
+   罐子 —— 玻璃罐身 + 罐内堆叠 + 装饰解锁 + 挂绳计数牌
+   ============================================================ */
+const UNLOCKS = [
+  { at:7,   name:"蝴蝶结" }, { at:21,  name:"小围巾" }, { at:30,  name:"星星挂饰" },
+  { at:50,  name:"小皇冠" }, { at:100, name:"守护光环" }, { at:365, name:"大奖杯" },
+];
+function drawJar(c, jar, shake){
+  const theme = THEME_MAP[jar.themeId] || THEMES[0];
+  const x = JAR.x, y = JAR.y, w = JAR.w, h = JAR.h;
+  const sx = shake>0 ? Math.sin(shake*40)*4*(1-shake) : 0;
+  c.save(); c.translate(sx, 0);
+  /* 罐底软阴影：把罐子放在地板上（不用大光晕抢戏） */
+  pEllipse(c, x, y+h+10, w*0.46, 15, "rgba(140,90,43,.20)");
+  pEllipse(c, x, y+h+8, w*0.30, 9, "rgba(140,90,43,.16)");
+  /* 罐身：浅蓝玻璃（初版 demo 语汇：玻璃底 + 细密 dot 颗粒） */
+  pRoundRect(c, x-w/2, y, w, h, 22, "#E6F3F9");
+  for(let yy=y+8; yy<y+h-8; yy+=12){
+    const rowOff = ((yy-y)/12|0)%2 ? 6 : 0;
+    for(let xx=x-w/2+10+rowOff; xx<x+w/2-10; xx+=12) P(c, xx, yy, 4, 4, "#D2E9F2");
+  }
+  /* 罐内堆叠 */
+  drawJarItems(c, jar, x, y+h-14);
+  /* 玻璃反光：左粗右细（初版 demo 的高光语汇） */
+  P(c, x-w/2+16, y+22, 10, h-66, "rgba(255,255,255,.92)");
+  P(c, x-w/2+28, y+30, 4, h-92, "rgba(255,255,255,.55)");
+  P(c, x+w/2-26, y+30, 4, h-88, "rgba(255,255,255,.42)");
+  /* 罐身描边：墨色粗边（星露谷语汇，罐子从奶油墙里跳出来） */
+  pRoundRectStroke(c, x-w/2, y, w, h, 22, "#5C4A3A", 5);
+  /* 罐底沿：玻璃线 */
+  P(c, x-w/2+12, y+h-12, w-24, 4, "#9DC2D4");
+  /* 罐口：浅蓝口沿 + 墨线（初版 demo 的罐口语汇：细薄一圈，宽出罐身少许） */
+  pRoundRect(c, x-w/2-9, y-12, w+18, 16, 5, "#9DC2D4");
+  P(c, x-w/2-9, y-12, w+18, 4, "#5C4A3A");
+  P(c, x-w/2-9, y, w+18, 4, "#5C4A3A");
+  P(c, x-w/2+4, y-8, w-8, 3, "rgba(255,255,255,.5)");
+  /* 成长装饰 */
+  drawJarUnlocks(c, jar, x, y, w, h);
+  /* 挂绳计数牌（像素数字，宽度随位数） */
+  const cnt = String(Math.min(jar.count, 999));
+  const dc = 4, dw = cnt.length*dc*4 - dc, dh = 5*dc;
+  const tw = dw + 16, th = dh + 12;
+  const tx0 = x + w/2 + 10, ty0 = y + 26;
+  pLine(c, x+w/2-10, y+2, tx0+9, ty0, "#96613C", 2);
+  pRoundRect(c, tx0, ty0, tw, th, 4, "#FFF6EA");
+  pRoundRectStroke(c, tx0, ty0, tw, th, 4, "#5C4A3A", 3);
+  pDigits(c, cnt, tx0 + (tw-dw)/2, ty0 + (th-dh)/2, dc, "#5C4A3A");
+  c.restore();
+}
+function drawJarItems(c, jar, cx, baseY){
+  const items = jar.items.slice(-JAR_CAP);
+  if(!items.length) return;
+  /* 档位：≤20 枚大颗；第 21 枚起整罐压缩为小颗。packAnim 播放期间两档参数连续插值
+     （每行枚数用小数过渡，旧食物平滑变小、重排无跳变） */
+  const lv = packLevel(items.length);
+  let A = { target:PACK_LV[0].target, colW:PACK_LV[0].colW, rowH:PACK_LV[0].rowH };
+  let perRowF = PACK_LV[0].perRow;
+  if(lv===1){
+    const e = packAnim ? clamp(packAnim.t/packAnim.dur, 0, 1) : 1;
+    const k = e*e*(3-2*e);
+    A = { target:PACK_LV[0].target+(PACK_LV[1].target-PACK_LV[0].target)*k,
+          colW:  PACK_LV[0].colW  +(PACK_LV[1].colW  -PACK_LV[0].colW)*k,
+          rowH:  PACK_LV[0].rowH  +(PACK_LV[1].rowH  -PACK_LV[0].rowH)*k };
+    perRowF = PACK_LV[0].perRow + (PACK_LV[1].perRow-PACK_LV[0].perRow)*k;
+  }
+  items.forEach((it,i)=>{
+    const row = Math.floor(i/perRowF), col = i - row*perRowF;
+    const sr = seedRand(it.seed||7);
+    const drift = (sr()-.5)*16;                 /* 整行漂移：去掉格子感 */
+    const ox = (sr()-.5)*18, oy = (sr()-.5)*8;
+    const px = clamp(cx + (col-(perRowF-1)/2)*A.colW + drift + ox, cx-68, cx+68);
+    const py = baseY - 24 - row*A.rowH + oy;
+    paintFood(c, it.foodId, px, py, foodCell(A.target, it.foodId), 3, it.special, it.frost);
+  });
+}
+function drawJarUnlocks(c, jar, x, y, w, h){
+  const theme = THEME_MAP[jar.themeId] || THEMES[0];
+  if(jar.count>=7){ /* 蝴蝶结（两瓣椭圆 + 结心） */
+    pEllipse(c, x-13, y+34, 9, 8, theme.color);
+    pEllipse(c, x+13, y+34, 9, 8, theme.color);
+    pCircle(c, x, y+36, 5, theme.dark);
+  }
+  if(jar.count>=21){ /* 围巾 */
+    pRoundRect(c, x-30, y+h-46, 60, 13, 5, "#FFF3D8");
+    pRoundRect(c, x+6, y+h-38, 15, 30, 6, "#93C9F7");
+  }
+  if(jar.count>=30){ /* 星星挂饰 */
+    pStar(c, x-34, y+66, 8, "#FFD66B");
+    pStar(c, x+34, y+66, 8, "#FFD66B");
+  }
+  if(jar.count>=50){ /* 小皇冠（像素三角冠） */
+    P(c, x-16, y-16, 32, 8, "#FFD66B");
+    P(c, x-16, y-30, 8, 14, "#FFD66B");
+    P(c, x-8, y-24, 8, 8, "#FFD66B");
+    P(c, x, y-32, 8, 16, "#FFD66B");
+    P(c, x+8, y-24, 8, 8, "#FFD66B");
+    P(c, x+16, y-30, 8, 14, "#FFD66B");
+    pCircle(c, x, y-19, 3, "#FF6FA5");
+  }
+  if(jar.count>=100){ /* 守护光环（像素椭圆环） */
+    pRingEllipse(c, x, y-42, 40, 12, "rgba(255,214,107,.85)");
+  }
+  if(jar.count>=365){ /* 大奖杯 */
+    P(c, x-11, y-30, 22, 16, "#FFD66B");
+    P(c, x-7, y-14, 14, 4, "#E0A93E");
+    P(c, x-3, y-10, 6, 7, "#FFD66B");
+    P(c, x-8, y-3, 16, 4, "#FFD66B");
+  }
+}
+
+/* ============================================================
+   满罐封存 · 礼品罐 —— 罐内装满 JAR_CAP（50）枚后，整罐扎上礼品缎带，
+   缩小成和盆栽差不多大的小罐，存放在大罐两侧地面上；同一目标续用
+   （连续天数 / 勋章 / 历史全保留，只换新容器）
+   ============================================================ */
+let sealAnim = null;        // { t, dur, jarId, arch, slot } 封存演出（真罐→缎带→缩小滑走）
+let giftHits = [];          // 本帧已绘制礼品罐的命中区（逻辑坐标），供点击检测
+/* 地面槽位：大罐左侧（罐与盆栽之间）2 列 ×4 行 + 右侧（罐与摆件之间）1 列 ×4 行，共 12 槽；
+   行越靠后 baseY 越高（视觉进深）、scale 递减；超出容量只展示最新的 12 个 */
+const GIFT_SLOTS = (()=>{ const s=[];
+  const rowY=[500,474,448,422], rowS=[1,.92,.85,.78];
+  for(let r=0;r<4;r++){ s.push({x:212, baseY:rowY[r], scale:rowS[r]}); s.push({x:264, baseY:rowY[r], scale:rowS[r]}); }
+  const rY=[500,474,448,422], rS=[.78,.72,.66,.60];
+  for(let r=0;r<4;r++) s.push({x:520, baseY:rY[r], scale:rS[r]});
+  return s; })();
+function giftSlots(jar){
+  const n = (jar && jar.archives) ? jar.archives.length : 0;
+  const out = [];
+  const start = Math.max(0, n - GIFT_SLOTS.length);          /* 超出容量只展示最新的 */
+  for(let i=n-1; i>=start; i--){                              /* 从后往前画：靠后的行先画（进深遮挡） */
+    const slot = GIFT_SLOTS[Math.min(i, GIFT_SLOTS.length-1)];
+    out.push({ arch: jar.archives[i], idx:i, x:slot.x, baseY:slot.baseY, scale:slot.scale });
+  }
+  return out;
+}
+/* 礼品缎带色板：按存档 id 哈希稳定取色——粉 / 淡紫 / 薄荷绿 / 杏黄 / 雾蓝 / 蜜橘轮换，
+   每袋颜色都不同，避免一片粉；side 决定竖带偏向哪一侧（±1） */
+const GIFT_RIBBONS = [
+  { c:"#F2A8C6", d:"#D97BA3" },   /* 粉 */
+  { c:"#C9A8E8", d:"#A57FD0" },   /* 淡紫 */
+  { c:"#9FD4B4", d:"#6FB78C" },   /* 薄荷绿 */
+  { c:"#F6C98F", d:"#DFA45C" },   /* 杏黄 */
+  { c:"#9FC5E8", d:"#6FA3D4" },   /* 雾蓝 */
+  { c:"#F2B49A", d:"#D98A6B" },   /* 蜜橘 */
+];
+function giftRibbon(arch){
+  const id = (arch && arch.id) || "x";
+  let h = 0; for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) & 1023;
+  const rb = GIFT_RIBBONS[h % GIFT_RIBBONS.length];
+  return { c:rb.c, d:rb.d, side: (h%2===0 ? -1 : 1) };
+}
+/* 礼品罐：迷你玻璃罐 + 彩色缎带（竖带打偏、色板轮换）+ 顶上蝴蝶结（沿用主罐玻璃语汇，蝴蝶结随时间轻摇） */
+function drawGiftJar(c, arch, cx, baseY, s, t){
+  const theme = THEME_MAP[arch.themeId] || THEMES[0];
+  const w = 48*s, h = 52*s, rx = 9*s;
+  const ph = (arch.id.charCodeAt(arch.id.length-1) || 7) % 10;
+  /* 落地软阴影 */
+  pEllipse(c, cx, baseY+2, w*0.52, 4.5*s, "rgba(140,90,43,.20)");
+  /* 罐身：浅蓝玻璃 */
+  pRoundRect(c, cx-w/2, baseY-h, w, h, rx, "#E6F3F9");
+  const dot = Math.max(2, Math.round(3*s));
+  for(let yy=baseY-h+8*s; yy<baseY-8*s; yy+=9*s)
+    for(let xx=cx-w/2+7*s; xx<cx+w/2-7*s; xx+=9*s) P(c, xx, yy, dot, dot, "#D2E9F2");
+  /* 罐里食物的颜色小团（主题色，暗示装着甜品） */
+  pCircle(c, cx-7*s, baseY-14*s, 4.5*s, theme.color);
+  pCircle(c, cx+8*s, baseY-22*s, 3.8*s, _mix(theme.color, "#FFFFFF", .35));
+  pCircle(c, cx-2*s, baseY-30*s, 3.2*s, theme.dark);
+  /* 玻璃高光 + 描边 + 罐口 */
+  P(c, cx-w/2+5*s, baseY-h+7*s, Math.max(2, 3*s), h-16*s, "rgba(255,255,255,.9)");
+  pRoundRectStroke(c, cx-w/2, baseY-h, w, h, rx, "#5C4A3A", Math.max(1.5, 3*s));
+  pRoundRect(c, cx-w/2-3*s, baseY-h-5*s, w+6*s, 7*s, 2*s, "#9DC2D4");
+  P(c, cx-w/2-3*s, baseY-h-5*s, w+6*s, Math.max(1, 2*s), "#5C4A3A");
+  /* 礼品缎带：竖带偏一侧打 + 横带满宽（色板轮换色，竖带叠一层薄高光） */
+  const rb = giftRibbon(arch);
+  const bx = cx + rb.side * 0.14 * w;                     /* 竖带结点偏左/偏右，不对称更俏皮 */
+  P(c, bx-3*s, baseY-h+5*s, 6*s, h-10*s, rb.c);
+  P(c, cx-w/2+4*s, baseY-25*s, w-8*s, 6*s, rb.c);
+  P(c, bx-3*s, baseY-h+5*s, 6*s, h-10*s, "rgba(255,255,255,.22)");
+  /* 蝴蝶结：两瓣 + 结心 + 垂尾（系在竖带结点正上方） */
+  const bob = Math.sin(t*2 + ph)*1.2*s;
+  const by = baseY-h-7*s + bob;
+  pEllipse(c, bx-7*s, by, 7*s, 5*s, rb.c);
+  pEllipse(c, bx+7*s, by, 7*s, 5*s, rb.c);
+  pCircle(c, bx, by, 3.2*s, rb.d);
+  P(c, bx-4*s, by+4*s, 3*s, 5*s, rb.c);
+  P(c, bx+1*s, by+4*s, 3*s, 5*s, rb.c);
+}
+/* 缎带戴上「真罐」的覆盖层（bowT 0→1 弹出；与礼品罐同款：竖带打偏 off + 色板色 rb） */
+function drawGiftRibbon(c, x, y, w, h, rb, off, bowT){
+  P(c, x-3+off, y+4, 6, h-8, rb.c);
+  P(c, x-w/2+4, y+h-34, w-8, 6, rb.c);
+  if(bowT<=0) return;
+  const pop = 1 + Math.sin(bowT*Math.PI)*.18;
+  const by = y-9 - (1-bowT)*6;
+  pEllipse(c, x-8*pop+off, by, 7*pop, 5*pop, rb.c);
+  pEllipse(c, x+8*pop+off, by, 7*pop, 5*pop, rb.c);
+  pCircle(c, x+off, by, 3*pop, rb.d);
+}
+/* 画当前目标所有已封存的礼品罐（大罐两侧地面），并重建点击命中区 */
+function drawGifts(c, jar, t){
+  giftHits = [];
+  for(const g of giftSlots(jar)){
+    if(sealAnim && sealAnim.arch.id === g.arch.id) continue;   /* 正在封存演出的那只要飞过去，不重复画 */
+    drawGiftJar(c, g.arch, g.x, g.baseY, g.scale, t);
+    giftHits.push({ x:g.x, y:g.baseY-26*g.scale, r:Math.max(20, 26*g.scale), archId:g.arch.id, jarId:jar.id, idx:g.idx });
+  }
+}
+/* 满罐封存：扎缎带 → 演出 → 落地面槽位；目标本身续用（天数/勋章/历史不清零） */
+function sealJar(jar){
+  if(!jar) return;
+  jar.archives = jar.archives || [];
+  const slot = GIFT_SLOTS[Math.min(jar.archives.length, GIFT_SLOTS.length-1)];
+  const arch = { id:"a"+Date.now().toString(36)+Math.floor(Math.random()*99),
+    sealedAt: todayStr(), count: jar.items.length,
+    items: jar.items.slice(-JAR_CAP), themeId: jar.themeId };
+  jar.archives.push(arch);
+  jar.items = [];
+  sealAnim = { t:0, dur:1.6, jarId:jar.id, arch, slot };
+  save(); refreshAll();
+  sprite.emote = "cheer"; sprite.hopT = .7;
+  /* 若精灵正站在着陆点上，轻轻挪到罐侧（免得封存落点把它嵌进罐里） */
+  const gx0 = slot.x-30*slot.scale, gx1 = slot.x+30*slot.scale;
+  if(sprite.x > gx0 && sprite.x < gx1 && sprite.y > slot.baseY-64*slot.scale && sprite.y < slot.baseY+16)
+    spriteGoto(sprite.x < 400 ? gx0-24 : gx1+24, sprite.y);
+  SFX.cheer(); setTimeout(()=>SFX.sparkle(), 260);
+  spawn("gold", JAR.x, JAR.y+6, 26, {vy:-200, life:.9, size:4, g:430});
+  toast("🎉 装满 "+arch.count+" 枚，扎成礼品罐放在地上！新罐开张～");
+  setTimeout(()=>spriteSay(pick(["满满一罐，打包放好～","换个新罐，继续装！","礼品罐扎好了，摆在地上啦"]), 3600), 900);
+}
+/* 封存演出：真罐戴上缎带（0.5s）→ 交叉淡出为礼品罐、缩小滑向槽位 → 落地扬尘 */
+function drawSealAnim(c, t){
+  const a = sealAnim; if(!a) return;
+  const jar = state.jars.find(j=>j.id===a.jarId) || activeJar(); if(!jar) return;
+  const rb = giftRibbon(a.arch);
+  const off = rb.side * Math.round(JAR.w*0.14);             /* 竖带结点偏移量（与礼品罐同款比例） */
+  const HOLD = .5, FADE = .22;
+  if(a.t < HOLD + FADE){
+    c.save();
+    c.globalAlpha = a.t < HOLD ? 1 : Math.max(0, 1-(a.t-HOLD)/FADE);
+    drawJar(c, Object.assign({}, jar, { items:a.arch.items }), 0);   /* 演出期间罐里还看得见那批食物 */
+    c.restore();
+    drawGiftRibbon(c, JAR.x, JAR.y, JAR.w, JAR.h, rb, off, clamp((a.t-.08)/.34, 0, 1));
+  }
+  if(a.t >= HOLD){
+    const u = clamp((a.t-HOLD)/(a.dur-HOLD), 0, 1);
+    const e = u*u*(3-2*u);
+    const tw = 48*a.slot.scale;
+    const x = JAR.x + (a.slot.x-JAR.x)*e;
+    const baseY = (JAR.y+JAR.h) + (a.slot.baseY-(JAR.y+JAR.h))*e;
+    const w = JAR.w + (tw-JAR.w)*e;
+    c.save();
+    c.globalAlpha = Math.min(1, (a.t-HOLD)/FADE);
+    drawGiftJar(c, a.arch, x, baseY, w/48, t);
+    c.restore();
+  }
+}
+function updateSealAnim(dt){
+  const a = sealAnim; if(!a) return;
+  a.t += dt;
+  if(a.t > .5 && a.t < a.dur-.2 && Math.random() < dt*30){   /* 滑行沿途撒金光 */
+    const u = clamp((a.t-.5)/(a.dur-.5), 0, 1), e = u*u*(3-2*u);
+    const x = JAR.x + (a.slot.x-JAR.x)*e, baseY = (JAR.y+JAR.h) + (a.slot.baseY-(JAR.y+JAR.h))*e;
+    spawn("gold", x, baseY-26, 1, {vy:-60, life:.5, size:2.6, g:200});
+  }
+  if(a.t >= a.dur){
+    sealAnim = null; SFX.squish();
+    spawn("dust", a.slot.x, a.slot.baseY, 5, {vy:-40, life:.5, size:3, col:"#FFF3D8", g:150});
+  }
+}
+/* 礼品罐详情弹窗：放大图 + 第几袋 + 封存日期 + 食物枚数 + 食物清单 + 所属目标 */
+function openGiftModal(arch, jar, nth){
+  hideSpeech();
+  const dist = {};
+  (arch.items||[]).forEach(it=>{ dist[it.foodId]=(dist[it.foodId]||0)+1; });
+  const list = Object.keys(dist).map(k=>{
+    const f = FOODS[k]; return (f?f.emoji:"🍩")+" × "+dist[k];
+  }).join("　") || "—";
+  openModal(`
+    <h2>礼品罐 · 第 ${nth} 袋</h2>
+    <div class="sub">扎着缎带的满罐，装着这段时间的坚持</div>
+    <div class="medal-show"><canvas id="gift-big" width="180" height="180"></canvas></div>
+    <div class="field"><label>所属目标</label><div class="stat-line">${jar?jar.name:"—"}</div></div>
+    <div class="field"><label>封存日期</label><div class="stat-line">${arch.sealedAt||"—"}</div></div>
+    <div class="field"><label>罐内食物</label><div class="stat-line">${arch.count||0} 枚（${list}）</div></div>
+    <div class="medal-desc">这个罐子装满了 ${arch.count||0} 枚甜品，已经被小心地扎好放在地上。目标本身还在继续——连续天数、勋章都接着算，往新罐里装就好。</div>
+    <div class="btn-row"><button class="btn btn-primary" id="gift-close">知道啦</button></div>`);
+  const cv = $("#gift-big");
+  if(cv && cv.getContext){ const cc = cv.getContext("2d"); if(cc){
+    cc.imageSmoothingEnabled=false; cc.clearRect(0,0,cv.width,cv.height);
+    const oldCUR = CUR; setT(cv.width/120, 0, 0);
+    drawGiftJar(cc, arch, 60, 112, 1.8, performance.now()/1000);
+    CUR = oldCUR;                                   /* 还原变换，避免污染主画布 */
+  } }
+  const close = $("#gift-close"); if(close) close.addEventListener("click", closeModal);
+}
+
+/* ============================================================
+   打卡台 —— 食物放大组装在画面正中心（绕圈涂抹动画）
+   ============================================================ */
+let making = null; // { foodId, stage, coatT, special, popT, frost }
+/* 食物在「中央大食物」与「罐内堆叠」两处按统一物理目标尺寸渲染，再按各自本地网格
+   换算格子尺寸 —— 甜甜圈 28 网格、其他 16 网格，保证同样的屏幕大小、不同分辨率 */
+function foodCell(target, foodId){ const f = FOODS[foodId] || FOODS.donut; return target/(f.grid||16); }
+const MAKE_TARGET = 320;                           /* 中央大食物目标直径（用户要求：缩小一点） */
+const JAR_TARGET  = 50;                            /* 罐内堆叠单枚目标尺寸 */
+function drawTray(c){
+  if(!making) return;
+  const x = TRAY.x, y = TRAY.y;
+  const bob = Math.sin(performance.now()/620)*2.5;      /* 大食物轻轻浮动 */
+  /* 食物（果冻落入 + 缩放弹跳 + 轻浮动）；缩放走格子尺寸而非 ctx.scale，保住整数硬边 */
+  const pop = making.popT>0 ? 1 + Math.sin(making.popT*Math.PI*3)*(1-making.popT)*.16 : 1;
+  const cell = foodCell(MAKE_TARGET, making.foodId) * pop;
+  const cy = y + bob - (making.popT>0 ? (1-making.popT)*34 : 0);
+  /* 脚下软阴影（像素椭圆，让大食物落地） */
+  pEllipse(c, x, cy + cell*7.6, cell*5.6, 11, "rgba(120,90,60,.12)");
+  paintFood(c, making.foodId, x, cy, cell, making.stage>=1?1:0, making.special, making.frost);
+  if(making.stage>=2){
+    if(making.coatT < 1){
+      /* 遮罩扫掠：扇形逐渐揭开（格子级硬边，8-bit 味） */
+      const q = Math.min(1, making.coatT);
+      const foff = FOODS[making.foodId].cx||8, fgrid = FOODS[making.foodId].grid||16;
+      paintFood(c, making.foodId, x, cy, cell, 2, making.special, making.frost, wedgeMask(q, foff, fgrid/2-1));
+      /* 糖珠涂抹头走在前沿 */
+      const a = -Math.PI/2 + q*Math.PI*2;
+      const hr = cell*(FOODS[making.foodId].ringR||7.4);
+      const bx = x + Math.cos(a)*hr, by = cy + Math.sin(a)*hr;
+      pCircle(c, bx, by, 12, "rgba(255,255,255,.40)");
+      pCircle(c, bx, by, 7, "rgba(255,255,255,.95)");
+      pCircle(c, bx, by, 3, "rgba(255,255,255,1)");
+    } else {
+      paintFood(c, making.foodId, x, cy, cell, 2, making.special, making.frost);
+    }
+  }
+  if(making.stage>=3) paintFood(c, making.foodId, x, cy, cell, 3, making.special, making.frost);
+}
+/* 打卡舞台光：像素同心椭圆光晕，托住中央大食物 */
+function drawSpotlight(c, cx, cy){
+  const rings = [[1,.05],[.82,.06],[.64,.07],[.46,.09],[.28,.12],[.12,.16]];
+  for(const [k,a] of rings) pEllipse(c, cx, cy, 230*k, 200*k, `rgba(255,248,232,${a})`);
+}
+
+/* ============================================================
+   罐罐精灵 —— 表情库 + 全场景漫游状态机
+   ============================================================ */
+const sprite = {
+  x: ANCHORS[4].x, y: ANCHORS[4].y, tx: ANCHORS[4].x, ty: ANCHORS[4].y,
+  speed: 0, emote: "blink", frame: 0, walkT: 0, restT: 1.5, state: "roam",
+  blinkT: rnd(1,3), hopT: 0, shakeT: 0, zzz: 0, emoteT: 0, loveT: 0, eatT: 0,
+};
+/* 罐罐精灵 —— 严格还原桌面初版 demo 的像素造型（整数循环奶油身体、star 顶十字、
+   creamSh 小脚、2×2 墨眼 / 2×1 眨眼、2×1 腮红与嘴，无腿无手）；预烘焙成位图后
+   drawImage 按舞台缩放绘制，硬边像素、比例与 demo 完全一致。状态表情只在 demo
+   脸部上叠加（身体造型永远 demo 一模一样）。 */
+const SPR_BZ = 8;                          /* 离屏每 demo 像素 = 8 物理像素 */
+const SPR_BB = { w:14, h:13 };             /* 精灵 bounding box（demo 网格 x75..89 / y22..34） */
+const SPR_LOGICAL = 100;                   /* 精灵整体目标逻辑宽（等比放大；用户觉得偏小，从 80 再放大到 100） */
+const _SC = { star:"#FFD66B", cream:"#FFF6EA", creamSh:"#EFDCC6", blush:"#FFA9C9", ink:"#5C4A3A" };
+function _mix(a,b,t){ const A=[parseInt(a.slice(1,3),16),parseInt(a.slice(3,5),16),parseInt(a.slice(5,7),16)];
+  const B=[parseInt(b.slice(1,3),16),parseInt(b.slice(3,5),16),parseInt(b.slice(5,7),16)];
+  return "rgb("+((A[0]+(B[0]-A[0])*t)|0)+","+((A[1]+(B[1]-A[1])*t)|0)+","+((A[2]+(B[2]-A[2])*t)|0)+")"; }
+function bakeCreatureImg(blink){
+  const w = SPR_BB.w*SPR_BZ, h = SPR_BB.h*SPR_BZ;
+  const cv = document.createElement("canvas"); cv.width=w; cv.height=h;
+  const g = cv && cv.getContext ? cv.getContext("2d") : null; if(!g) return cv;
+  g.imageSmoothingEnabled=false;
+  const OX=75, OY=22, B=SPR_BZ;
+  const fill=(gx,gy,gw,gh,col)=>{ g.fillStyle=col; g.fillRect((gx-OX)*B,(gy-OY)*B,gw*B,gh*B); };
+  const cx=82, by=35;
+  /* star 顶：1+3+1 像素十字（与 demo 同款） */
+  fill(cx, by-13, 1,1, _SC.star);
+  fill(cx-1, by-12, 3,1, _SC.star);
+  fill(cx, by-11, 1,1, _SC.star);
+  /* 身体：大蒜 / 饭团造型 —— 顶端尖（顶着 star）、整体上窄下宽、底部宽圆填平
+     （去掉原先两只小脚：放大后小脚与身体间的缝会变成可见镂空，像"缺色块 / 被穿透"）。
+     逐行按半宽轮廓填充，三段着色（顶受光 / 主体 / 底暗）。 */
+  const prof = [2,2,3,4,5,6,6,6,6,6,5];           /* 11 行半宽（中心 82）：上窄下宽、底缘宽圆收口 */
+  for(let r=0; r<prof.length; r++){
+    const hw = prof[r], ly = by-11+r, l = cx-hw, rt = cx+hw;
+    const col = r<4 ? _mix(_SC.cream,"#FFFFFF",0.35) : (r>=9 ? _SC.creamSh : _SC.cream);
+    fill(l, ly, rt-l+1, 1, col);                    /* 实心整行填充，底边绝无镂空 */
+  }
+  /* 底缘收圆（最底行半宽 5，已自然收口；补一段同色实底确保圆角顺滑、彻底填平） */
+  fill(cx-4, by-1, 9, 1, _SC.creamSh);
+  /* 墨眼：睁眼 2×2 / 眨眼 2×1 */
+  if(!blink){
+    fill(cx-4, by-7, 2,2, _SC.ink);
+    fill(cx+2, by-7, 2,2, _SC.ink);
+  } else {
+    fill(cx-4, by-6, 2,1, _SC.ink);
+    fill(cx+2, by-6, 2,1, _SC.ink);
+  }
+  /* 腮红 2×1 + 嘴 2×1 */
+  fill(cx-6, by-5, 2,1, _SC.blush);
+  fill(cx+4, by-5, 2,1, _SC.blush);
+  fill(cx-1, by-4, 2,1, _SC.ink);
+  return cv;
+}
+let SPR_IMG = null;
+function initSpriteImg(){
+  try { SPR_IMG = { open: bakeCreatureImg(false), blink: bakeCreatureImg(true) }; }
+  catch(_) { SPR_IMG = null; }
+}
+function drawSprite(c){
+  if(!SPR_IMG) return;
+  const s = sprite;
+  const bob = s.state==="walk" ? (s.frame? -2:0) : Math.round(Math.sin(performance.now()/900)*1.5);
+  const hop = s.hopT>0 ? -Math.sin(s.hopT*Math.PI)*16 : 0;
+  const shakeX = s.shakeT>0 ? Math.sin(s.shakeT*30)*5 : 0;
+  const chew = (s.emote==="eat" && s.eatT>0) ? Math.abs(Math.sin(performance.now()/90))*3 : 0;  /* 吃饭时小颠簸咀嚼 */
+  const sxL = Math.round(s.x + shakeX);          /* 逻辑锚点（整数对齐，保硬边） */
+  const syL = s.y + bob + hop + chew;            /* 逻辑脚底（含 bob/hop/chew） */
+  const k = CUR.K;
+  const destW = Math.round(SPR_LOGICAL * k);
+  const destH = Math.round(SPR_LOGICAL * (SPR_BB.h/SPR_BB.w) * k);
+  const bx = Math.round((sxL - SPR_LOGICAL/2) * k);
+  const by = Math.round(syL * k) - destH;
+  /* 夜晚暖光晕：奶油身体在暗色房间里（尤其贴着明亮罐口时）容易融掉下半身剪影，
+     用与夜晚挂饰同款的同心圆低透明暖光晕托住整个轮廓（画在身体后面，原型分毫不动）。
+     注意 pCircle/P 系列原语接收「逻辑坐标」，这里必须用 sxL/syL，不能用已乘 K 的 bx/by/destW */
+  if(state.night){
+    const hcy = syL - SPR_LOGICAL*0.5;                      /* 身体中心（逻辑坐标） */
+    const HALO_A = [0.04, 0.06, 0.09];                      /* 外→内三层，柔和不抢戏 */
+    for(let r=3; r>=1; r--){
+      pCircle(c, sxL, hcy, SPR_LOGICAL*0.30*r, "rgba(255,236,180,"+HALO_A[3-r]+")");
+    }
+  }
+  /* 脚下软阴影（紧凑收拢：太宽的半透明椭圆压在点阵墙上会花成一排碎色块） */
+  pEllipse(c, sxL, s.y + 2, SPR_LOGICAL*0.26, SPR_LOGICAL*0.075, "rgba(120,90,60,.18)");
+  /* 基础造型：永远 demo 精确（睁眼 / 眨眼由 blinkT 决定） */
+  c.drawImage((s.blinkT < .12) ? SPR_IMG.blink : SPR_IMG.open, bx, by, destW, destH);
+  /* 状态表情：只在 demo 脸部上叠加，身体造型不变 —— 忠实「一模一样」 */
+  const em = s.emote;
+  if(em==="sleep"){
+    pZzz(c, sxL + SPR_LOGICAL*0.22, by + destH*0.30, SPR_LOGICAL*0.045, "#A08D80");
+    pZzz(c, sxL + SPR_LOGICAL*0.32, by + destH*0.18, SPR_LOGICAL*0.07, "#A08D80");
+  }
+  const isFace = (em==="love"||em==="cheer"||em==="expect"||em==="happy"||em==="shake"
+                  ||em==="wink"||em==="shy"||em==="surprised"||em==="eat");
+  if(isFace){
+    /* 擦除 demo 眼睛区域（cream 还原身体），再画表情眼。
+       区域收紧到双眼所在列（demo 网格 x78-85，fillRect 右开），不碰两侧腮红(x76-77 / x86-87) */
+    const ex0 = bx + (3/SPR_BB.w)*destW, ex1 = bx + (11/SPR_BB.w)*destW;
+    const ey0 = by + (4/SPR_BB.h)*destH, ey1 = by + (9/SPR_BB.h)*destH;
+    c.fillStyle = _SC.cream; c.fillRect(ex0, ey0, ex1-ex0, ey1-ey0);
+    const EX = SPR_LOGICAL*0.25, EY = SPR_LOGICAL*0.46, R4 = SPR_LOGICAL*0.075;
+    if(em==="love"){
+      pHeart(c, sxL - EX, syL - EY, R4, _SC.ink);
+      pHeart(c, sxL + EX, syL - EY, R4, _SC.ink);
+    } else if(em==="cheer"){
+      pStar(c, sxL - EX, syL - EY, R4, _SC.ink);
+      pStar(c, sxL + EX, syL - EY, R4, _SC.ink);
+    } else if(em==="expect"){
+      pCircle(c, sxL - EX, syL - EY, R4, "#FFFFFF"); pRing(c, sxL - EX, syL - EY, R4, _SC.ink);
+      pCircle(c, sxL + EX, syL - EY, R4, "#FFFFFF"); pRing(c, sxL + EX, syL - EY, R4, _SC.ink);
+    } else if(em==="happy"){
+      pSmile(c, sxL - EX, syL - EY, R4*1.1, _SC.ink, 1);
+      pSmile(c, sxL + EX, syL - EY, R4*1.1, _SC.ink, 1);
+    } else if(em==="wink"){
+      /* 左眼睁开、右眼俏皮一眨（闭眼短横），嘴角上扬 —— 卖萌 */
+      P(c, sxL - EX - R4, syL - EY - R4, R4*2, R4*2, _SC.ink);          /* 左眼：睁开方眼 */
+      P(c, sxL + EX - R4, syL - EY - R4*0.2, R4*2, Math.max(PIX,R4*0.9), _SC.ink); /* 右眼：闭眼短横 */
+      pSmile(c, sxL, syL - SPR_LOGICAL*0.31, SPR_LOGICAL*0.07, _SC.ink, 1);
+    } else if(em==="shy"){
+      /* 弯弯笑眼 + 加深腮红（害羞脸红） */
+      pSmile(c, sxL - EX, syL - EY, R4*1.1, _SC.ink, 1);
+      pSmile(c, sxL + EX, syL - EY, R4*1.1, _SC.ink, 1);
+      pCircle(c, sxL - EX - R4*0.4, syL - EY + R4*1.2, R4*1.05, _SC.blush);
+      pCircle(c, sxL + EX + R4*0.4, syL - EY + R4*1.2, R4*1.05, _SC.blush);
+      pSmile(c, sxL, syL - SPR_LOGICAL*0.30, SPR_LOGICAL*0.06, _SC.ink, 1);
+    } else if(em==="surprised"){
+      /* 圆睁大眼 + 小 O 嘴（惊讶） */
+      pCircle(c, sxL - EX, syL - EY, R4*1.15, _SC.ink);
+      pCircle(c, sxL + EX, syL - EY, R4*1.15, _SC.ink);
+      pCircle(c, sxL, syL - SPR_LOGICAL*0.26, R4*0.8, _SC.ink);
+    } else if(em==="eat"){
+      /* 开心吃吃：弯眼微笑 + 嘴边小甜甜圈，配合咀嚼小颠（chew 见 syL） */
+      pSmile(c, sxL - EX, syL - EY, R4*1.1, _SC.ink, 1);
+      pSmile(c, sxL + EX, syL - EY, R4*1.1, _SC.ink, 1);
+      pSmile(c, sxL, syL - SPR_LOGICAL*0.30, SPR_LOGICAL*0.06, _SC.ink, 1);
+      const fx = sxL + SPR_LOGICAL*0.22, fy = syL - SPR_LOGICAL*0.16, fr = SPR_LOGICAL*0.11;
+      pRing(c, fx, fy, fr, "#C9772E"); pCircle(c, fx, fy, fr*0.55, "#FFE3A1");
+      P(c, fx-fr*0.35, fy-fr*0.35, 2,2, "#FF6FA5"); P(c, fx+fr*0.25, fy-fr*0.10, 2,2, "#7FD8F0"); P(c, fx-fr*0.10, fy+fr*0.32, 2,2, "#7FB069");
+    } else { /* shake 劝退：撇撇眼 + 撇嘴 */
+      pSmile(c, sxL - EX, syL - EY, R4*1.1, _SC.ink, -1);
+      pSmile(c, sxL + EX, syL - EY, R4*1.1, _SC.ink, -1);
+      pSmile(c, sxL, syL - SPR_LOGICAL*0.31, SPR_LOGICAL*0.07, _SC.ink, -1);
+    }
+  }
+}
+function spriteGoto(x, y, speed=140){ const p=avoidProps(x,y); sprite.tx=p.x; sprite.ty=p.y; sprite.speed=speed; sprite.state="goto"; }
+function spriteRoam(){ sprite.state="roam"; sprite.restT = rnd(.8, 2.2); }
+function updateSprite(dt){
+  const s = sprite;
+  s.blinkT -= dt; if(s.blinkT < 0) s.blinkT = rnd(2,4.5);   /* 眼睛自然眨动（与表情无关，保持活物感） */
+  if(s.hopT>0) s.hopT -= dt;
+  if(s.emoteT>0) s.emoteT -= dt;                            /* 表情冷却计时 */
+  if(s.loveT>0){                                            /* 被摸头后的 love 表情：短暂停留后自动还原 */
+    s.loveT -= dt;
+    if(s.loveT<=0){ if(s.emote==="love") s.emote = "blink"; s.emoteT = Math.max(s.emoteT, rnd(8,14)); }
+  }
+  if(s.eatT>0){                                             /* 喂食后的 eat 表情：吃完自动还原 */
+    s.eatT -= dt;
+    if(s.eatT<=0){ if(s.emote==="eat") s.emote = "blink"; s.emoteT = Math.max(s.emoteT, rnd(8,14)); }
+  }
+  if(s.shakeT>0){ s.shakeT -= dt; if(s.shakeT<=0) s.emote = s.state==="goto"?"expect":"blink"; }
+  if(s.emote==="sleep") s.zzz = (s.zzz + dt) % 2;
+  /* 移动 */
+  const dx = s.tx - s.x, dy = s.ty - s.y;
+  const dist = Math.hypot(dx, dy);
+  if(dist > 3){
+    s.state = "walk";
+    s.x += dx/dist * Math.min(s.speed||120, dist/dt) * dt;
+    s.y += dy/dist * Math.min(s.speed||120, dist/dt) * dt;
+    s.walkT += dt;
+    if(s.walkT > .18){ s.walkT = 0; s.frame = s.frame?0:1; if(Math.random()<.3) SFX.step(); }
+  } else if(s.state==="walk" || s.state==="goto"){
+    s.x = s.tx; s.y = s.ty; s.frame = 0;
+    /* 关键：无论 goto/walk 到达，一律回到 roam —— 否则目标恰在 3px 内时 state 卡死在 goto，
+       漫游决策块永远不再执行，精灵从此不再移动、表情也永远不变（曾致"不会动 + 表情卡住"） */
+    s.state = "roam"; s.restT = rnd(1.5, 3.5);
+  }
+  /* 漫游决策 */
+  if(s.state==="roam"){
+    s.restT -= dt;
+    if(s.restT <= 0){
+      if(making || fly || checkin){
+        /* 打卡流程中：守在旁观位看主人做甜品，不乱跑（旧行为靠 goto 卡住实现，冻结修复后需显式守卫） */
+        if(Math.hypot(s.x-MAKING_SPRITE.x, s.y-MAKING_SPRITE.y) > 4) spriteGoto(MAKING_SPRITE.x, MAKING_SPRITE.y, 170);
+        s.restT = rnd(2, 3.5);
+      } else {
+        const a = pick(ANCHORS);
+        /* 罐口锚点（空中）垂直锁在罐沿上，不往罐口里沉；地面锚点保留随机抖动 */
+        const nx = a.x + rnd(-14,14), ny = (a.y < 400) ? Math.min(a.y, 234) : a.y + rnd(-8,8);
+        if(Math.hypot(nx - s.x, ny - s.y) < 24){
+          s.restT = rnd(.6, 1.4);                             /* 新目标几乎原地：稍后再选，绝不发 3px 内的 goto（防冻结） */
+        } else {
+          spriteGoto(nx, ny, rnd(80,130));
+          /* 出发时偶尔露出惊讶小表情，但受冷却约束，不会频繁变脸 */
+          if(s.emoteT <= 0){ s.emote = Math.random() < 0.2 ? "surprised" : "blink"; s.emoteT = rnd(10,18); }
+        }
+      }
+    } else if(s.emoteT <= 0){
+      /* 静息时隔一段时间（10~18s）才换一个表情，避免频繁变脸 */
+      s.emote = pick(["blink","curious","sleep","wink","shy","blink","wink"]);
+      s.emoteT = rnd(10,18);
+    }
+  }
+}
+
+/* ============================================================
+   粒子系统
+   ============================================================ */
+const particles = [];
+const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function spawn(type, x, y, n, opts={}){
+  if(reduced && (type==="gold"||type==="petal")) n = Math.min(n, 3);
+  for(let i=0;i<n;i++){
+    const p = { type, x, y, t:0, life: opts.life || rnd(.5,1), rot: rnd(0,6.3),
+      vx: opts.vx!==undefined ? opts.vx+rnd(-20,20) : rnd(-40,40),
+      vy: opts.vy!==undefined ? opts.vy+rnd(-20,20) : rnd(-90,-30),
+      size: opts.size || rnd(2.5,4.5),
+      col: opts.col || pick(["#FFD66B","#FFE9A8","#FFB84D"]), g: opts.g ?? 240 };
+    particles.push(p);
+  }
+}
+function stepParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.t += dt; p.x += p.vx*dt; p.y += p.vy*dt;
+    if(p.type==="steam"){ p.vy -= 30*dt; p.vx += Math.sin(p.t*3)*8*dt; }
+    else p.vy += p.g*dt;
+    if(p.type==="petal"){ p.vx = Math.sin(p.t*2.2)*22; }
+    p.rot += dt*6;
+    if(p.t > p.life) particles.splice(i,1);
+  }
+}
+function fadeCol(col, a){
+  if(col.startsWith("rgba")||col.startsWith("rgb(")) return col;
+  return hexA(col, a);
+}
+function drawParticles(c){
+  for(const p of particles){
+    const a = Math.max(0, 1 - p.t/p.life);
+    /* 金色星星双明度交替闪烁（8-bit 帧动画感） */
+    const flick = (p.type==="gold"||p.type==="star") && Math.floor(p.t*14)%2===0;
+    const col = flick ? (p.col==="#FFD66B" ? "#FFE9A8" : p.col==="#FFE9A8" ? "#FFD66B" : p.col) : p.col;
+    if(p.type==="gold"){
+      const r = Math.max(PIX, p.size*(p.t<.15 ? p.t/.15 : 1));
+      pStar(c, p.x, p.y, r, col);
+    } else if(p.type==="star"){
+      pStar(c, p.x, p.y, Math.max(PIX, p.size*1.8*(p.t<.15 ? p.t/.15 : 1)), col);
+    } else if(p.type==="steam"){
+      pCircle(c, p.x, p.y, p.size+p.t*14, fadeCol(col, a*.5));
+    } else if(p.type==="petal"){
+      P(c, p.x, p.y, p.size*1.4, p.size*.9, fadeCol(col, a));
+    } else { /* dust / crumb */
+      const s = Math.max(PIX, p.size*(1-p.t/p.life)+1);
+      P(c, p.x, p.y, s, s, fadeCol(col, a*.85));
+    }
+  }
+}
+
+/* ============================================================
+   主循环
+   ============================================================ */
+let lastT = performance.now(), ambientT = 0, jarShake = 0, jarGlow = 0;
+function update(dt){
+  ambientT += dt;
+  updateSprite(dt);
+  stepParticles(dt);
+  updateSealAnim(dt);
+  if(packAnim){ packAnim.t += dt; if(packAnim.t >= packAnim.dur) packAnim = null; }
+  if(making){
+    if(making.popT>0) making.popT = Math.max(0, making.popT - dt*2.2);
+    if(making.stage===2 && making.coatT<1){
+      making.coatT = Math.min(1, making.coatT + dt/1.4);
+      /* 糖霜屑从绕圈涂抹头位置掉落 */
+      const a = -Math.PI/2 + making.coatT*Math.PI*2, hr = foodCell(MAKE_TARGET, making.foodId)*(FOODS[making.foodId].ringR||7.4);
+      const hx = TRAY.x + Math.cos(a)*hr, hy = TRAY.y + Math.sin(a)*hr;
+      if(Math.random()<dt*20) spawn("crumb", hx+rnd(-6,6), hy+rnd(-6,6), 1,
+        {vy:rnd(30,90), life:.55, size:2, col:"#FFF3D8", g:300});
+    }
+  }
+  if(jarShake>0) jarShake = Math.max(0, jarShake - dt);
+  if(jarGlow>0) jarGlow = Math.max(0, jarGlow - dt);
+  /* 罐身偶尔闪过一粒小星星（idle 小惊喜） */
+  if(!making && Math.random() < dt*.22){
+    spawn("star", JAR.x+rnd(-100,100), JAR.y+rnd(24,250), 1,
+      {vy:-6, life:.9, size:2, col: pick(["#FFF3C9","#FFE9A8"]), g:0});
+  }
+  /* 氛围粒子 */
+  if(Math.random() < dt*1.2){
+    const theme = THEME_MAP[activeJar().themeId] || THEMES[0];
+    if(theme.decor==="oden" && Math.random()<.6) spawn("steam", rnd(562,598), 472, 1, {life:1.6, size:3, g:-20, vy:-24});
+    else if(theme.decor==="oden" && Math.random()<.3) spawn("steam", rnd(566,594), 466, 1, {life:1.8, size:2.5, g:-16, vy:-20});
+    else if(theme.decor==="basket") spawn("petal", rnd(100,760), -10, 1, {life:6, size:3, g:14, vy:26, col: pick(["#FFF3D8","#FFE9A8","#D9ECFF"])});
+    else if(theme.decor==="sun") spawn("petal", rnd(100,760), -10, 1, {life:6, size:3, g:14, vy:26, col:"#FFE9A8"});
+    else spawn("petal", rnd(100,760), -10, 1, {life:7, size:2.6, g:12, vy:24, col: pick(["#FFF3D8","#FFE9A8","#D9ECFF","#D9F2E4"])});
+  }
+}
+/* ============================================================
+   离屏缓存 —— 房间与罐子 95% 是静态的，按 key 缓存整层，
+   每帧只画动态元素（托盘/飞行/精灵/粒子），保住 60fps。
+   ============================================================ */
+let bgCanvas = null, bgKey = "";
+function getBG(theme, jar){
+  const night = !!state.night;
+  const key = theme.id + "|" + (night?1:0) + "|" + stage.width;
+  if(bgKey === key && bgCanvas) return bgCanvas;
+  if(!bgCanvas || bgCanvas.width !== stage.width || bgCanvas.height !== stage.height){
+    bgCanvas = document.createElement("canvas");
+    bgCanvas.width = stage.width; bgCanvas.height = stage.height;
+  }
+  const bc = bgCanvas.getContext ? bgCanvas.getContext("2d") : null;
+  if(!bc) return bgCanvas;
+  setT(stage.width / W, 0, 0);                 /* 与主画布同一变换 → 合成时 1:1 零采样 */
+  bc.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+  drawRoom(bc, theme, night);
+  bgKey = key;
+  return bgCanvas;
+}
+let jarCanvas = null, jarKey = "";
+function drawJarCached(c, jar, shake){
+  const key = jar.themeId + "|" + jar.foodId + "|" + jar.count + "|" + jar.items.length + "|" + stage.width;
+  if(key !== jarKey || !jarCanvas || jarCanvas.width !== stage.width || jarCanvas.height !== stage.height){
+    if(!jarCanvas || jarCanvas.width !== stage.width || jarCanvas.height !== stage.height){
+      jarCanvas = document.createElement("canvas");
+      jarCanvas.width = stage.width; jarCanvas.height = stage.height;
+    }
+    const jc = jarCanvas.getContext ? jarCanvas.getContext("2d") : null;
+    if(jc){
+      setT(stage.width / W, 0, 0);             /* 与主画布同一变换 → 1:1 零采样合成 */
+      jc.clearRect(0, 0, jarCanvas.width, jarCanvas.height);
+      drawJar(jc, jar, 0);
+      jarKey = key;
+    }
+  }
+  const sx = shake>0 ? Math.sin(shake*40)*4*(1-shake) : 0;
+  c.save(); c.translate(sx*CUR.K, 0);
+  c.drawImage(jarCanvas, 0, 0);
+  c.restore();
+}
+function render(){
+  if(!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = "#FBF3E4";
+  ctx.fillRect(0, 0, stage.width, stage.height);
+  const jar = activeJar();
+  const night = !!state.night;
+  ctx.drawImage(getBG(THEME_MAP[jar.themeId]||THEMES[0], jar), 0, 0);
+  drawDecorOverlay(ctx, night, performance.now()/1000);   /* 淡紫花环 + 闪烁星星 + 悬挂挂饰（画在罐子之前，仍可见） */
+  drawMedals(ctx, night);                                 /* 瓶子上方荣誉柜：当前目标已解锁的里程碑勋章 */
+  if(sealAnim) drawSealAnim(ctx, performance.now()/1000);  /* 封存演出期间主罐让位给动画 */
+  else if(packAnim) drawJar(ctx, jar, jarShake);           /* 压缩演出每帧重画（缓存会跟不上） */
+  else drawJarCached(ctx, jar, jarShake);
+  drawGifts(ctx, jar, performance.now()/1000);             /* 大罐两侧地面上已封存的礼品罐 */
+  /* 入罐暖光：罐身染暖黄（画在罐子之后，才染得上） */
+  if(jarGlow>0){
+    pRoundRect(ctx, JAR.x-JAR.w/2, JAR.y, JAR.w, JAR.h, 22, "rgba(255,214,107,"+(jarGlow*.22)+")");
+  }
+  /* 打卡聚焦：舞台光托住中央大食物（不再全场压暗，画面保持明亮治愈） */
+  if(making) drawSpotlight(ctx, TRAY.x, TRAY.y-6);
+  drawTray(ctx);
+  drawFly(ctx);
+  drawParticles(ctx);
+  /* 精灵画在专属顶层画布（z-index 高于左栏与场景），永远不被任何图层穿透 */
+  if(slctx){
+    slctx.clearRect(0, 0, spriteLayer.width, spriteLayer.height);
+    setT(spriteLayer.width / W, 0, 0);
+    drawSprite(slctx);
+    setT(stage.width / W, 0, 0);
+  } else {
+    drawSprite(ctx);
+  }
+  updateSpeech();                       /* 标语气泡跟随精灵头顶 */
+  positionMedalPlate();                 /* 荣誉柜目标名牌跟随柜顶 */
+}
+let lastFrameAt = 0, rafOn = false, fbId = 0;
+function loop(maxDt){
+  const t = performance.now();
+  const dt = Math.min((t-lastT)/1000, maxDt || .05); lastT = t;
+  update(dt); render();
+  lastFrameAt = t;
+  if(rafOn) requestAnimationFrame(loop);
+}
+/* rAF 兜底驱动：后台标签页 / 内置预览面板 / 部分 WebView 会暂停 rAF，
+   画面和打卡流程就会"跑不起来"（停在第一帧、点击没反应）。
+   超过 400ms 没有新帧，就用定时器补帧（放宽 dt 上限，按真实时间推进）。 */
+function startDriver(){
+  if(!rafOn){ rafOn = true; requestAnimationFrame(loop); }
+  if(!fbId){ fbId = setInterval(()=>{ if(performance.now() - lastFrameAt > 400) loop(.25); }, 120); }
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) lastT = performance.now(); });
+}
+/* ============================================================
+   UI 渲染 —— HUD / dock / 悬浮食材图标
+   ============================================================ */
+function renderHUD(){
+  const jar = activeJar();
+  const jdays = Object.keys(jar.history||{}).length;
+  $("#hud-streak-num").textContent = state.globalStreak;
+  $("#hud-total-num").textContent = state.jars.reduce((s,j)=>s+j.count,0);
+  /* 累计打卡天数：所有罐 history 中出现的唯一日期数（与单个罐连续天数区分） */
+  const days = new Set();
+  state.jars.forEach(j=>{ const h = j.history||{}; for(const d in h) days.add(d); });
+  $("#hud-days-num").textContent = days.size;
+  /* 当前目标：顶部显示「连续 X · 累计 N 天」 */
+  $("#hud-goal-name").textContent = jar.name;
+  $("#hud-goal-meta").textContent = "连续 " + jar.streak + " · 累计 " + jdays + " 天";
+}
+function renderRail(){
+  const list = $("#rail-list"); if(!list) return; list.innerHTML = "";
+  state.jars.forEach((jar,i)=>{
+    const theme = THEME_MAP[jar.themeId] || THEMES[0];
+    const days = Object.keys(jar.history||{}).length;
+    const gifts = (jar.archives||[]).length;
+    const card = document.createElement("button");
+    card.className = "jar-card" + (i===state.activeJar?" active":"")
+      + (jar.todayDate===todayStr() && jar.todayProgress>=3 ? " done":"");
+    card.style.setProperty("--c", theme.color);
+    card.style.setProperty("--ctint", _mix(theme.color, "#FFFFFF", 0.62));   /* 提高饱和度，每罐主题色更分明显眼 */
+    card.innerHTML = `<span class="jc-glyph">${theme.glyph}</span>`
+      + `<span class="jc-name">${jar.name}</span>`
+      + `<span class="jc-meta">连 ${jar.streak} · 累 ${days}天${gifts?` · 🎁${gifts}`:""}</span>`;
+    card.addEventListener("click", ()=>{ if(i===state.activeJar) return; state.activeJar=i; save(); refreshAll(); SFX.pop(); });
+    list.appendChild(card);
+  });
+}
+function renderDock(){
+  const jar = activeJar(), food = FOODS[jar.foodId];
+  $("#check-glyph").textContent = food ? food.emoji : "🍩";
+  const done = jar.todayDate===todayStr() && jar.todayProgress>=3;
+  $("#check-btn").classList.toggle("pulse", !done);
+}
+function refreshAll(){ renderHUD(); renderRail(); renderDock(); refreshNightBtn(); updateSpriteCard(); }
+function refreshNightBtn(){
+  const b = $("#btn-night"); if(!b) return;
+  b.textContent = state.night ? "☀️" : "🌙";
+  b.title = state.night ? "当前夜晚，点我切回白天" : "当前白天，点我切换夜晚";
+}
+
+/* 悬浮食材图标（小画布画对应件） */
+function paintStepIcons(){
+  const jar = activeJar();
+  $$("#step-bar .step-btn").forEach((btn,i)=>{
+    const cv = btn.querySelector("canvas"); if(!cv) return;
+    drawFoodIcon(cv, jar.foodId, i+1, 0, making ? making.frost : null);
+  });
+}
+function layoutOverlays(){
+  /* step-bar 定位到瓶口上方大食物的下方（食物已上移，跟随 4:3 舞台实际位置） */
+  const bar = $("#step-bar");
+  const r = stage.getBoundingClientRect();
+  bar.style.left = (r.left + r.width*0.5) + "px";
+  bar.style.top  = (r.top + r.height*480/600) + "px";
+}
+
+/* ============================================================
+   打卡三步小游戏
+   ============================================================ */
+let checkin = null; // { step:0, comboT }
+function startCheckin(){
+  if(checkin) return; /* 已在打卡流程中 */
+  hideSpeech();       /* 开始打卡，先收起催打卡的标语 */
+  const jar = activeJar();
+  if(jar.todayDate===todayStr() && jar.todayProgress>=3){
+    toast("这个罐今天已经打卡啦，去看看别的罐吧");
+    return;
+  }
+  ac(); /* 用户手势中初始化音频 */
+  const theme = THEME_MAP[jar.themeId] || THEMES[0];
+  const randFood = pick(theme.foods);   /* 每日随机抽一款主题食物，免选招牌 */
+  jar.foodId = randFood;
+  checkin = { step: jar.todayProgress||0, comboT: performance.now() };
+  making = { foodId: randFood, stage: jar.todayProgress||0, coatT: (jar.todayProgress||0)>=2?1:0, special: 0, popT: 0, frost: genFrost(jar) };
+  if(making.stage>0) making.stage = Math.min(making.stage, 3);
+  paintStepIcons();
+  updateStepButtons();
+  renderDock();
+  $("#step-bar").classList.add("show");
+  $("#check-btn").classList.remove("pulse");
+  /* 精灵聚拢到正中心大食物旁边守着 */
+  spriteGoto(MAKING_SPRITE.x, MAKING_SPRITE.y, 170);
+  sprite.emote = "curious";
+}
+function updateStepButtons(){
+  if(!checkin) return;
+  $$("#step-bar .step-btn").forEach((btn,i)=>{
+    btn.classList.toggle("next", i===checkin.step);
+    btn.classList.toggle("done", i<checkin.step);
+  });
+}
+function clickStep(n){
+  if(!checkin || !making) return;
+  const jar = activeJar();
+  if(n !== checkin.step+1){ /* 乱序：摇头劝退，不惩罚 */
+    sprite.emote = "shake"; sprite.shakeT = .6;
+    SFX.bad();
+    const btn = $(`#step-bar .step-btn[data-step="${n}"]`);
+    btn.style.transform = "translateX(-4px)";
+    setTimeout(()=>btn.style.transform = "", 130);
+    return;
+  }
+  checkin.step = n;
+  jar.todayProgress = n; jar.todayDate = todayStr(); save();
+  if(n===1){ /* 胚体落入盘中 */
+    making.stage = 1; making.popT = 1;
+    SFX.pop();
+    spawn("dust", TRAY.x, TRAY.y+96, 6, {vy:-30, life:.5, size:3, col:"#E8DCC4", g:120});
+    sprite.emote = "happy"; sprite.hopT = .5;
+  } else if(n===2){ /* 绕圈涂抹 */
+    making.stage = 2; making.coatT = 0;
+    SFX.coat();
+    sprite.emote = "happy"; sprite.hopT = .5;
+  } else if(n===3){ /* 点缀撒落 */
+    making.stage = 3;
+    SFX.sprinkle();
+    for(let i=0;i<12;i++) spawn("crumb", TRAY.x+rnd(-48,48), TRAY.y-54-rnd(0,16), 1,
+      {vy:rnd(40,130), life:.6, size:2.5, col: pick(["#FF6FA5","#7FD8F0","#FFE066","#7FB069"]), g:300});
+    sprite.emote = "happy"; sprite.hopT = .6;
+    const quick = performance.now() - checkin.comboT < 4200;
+    if(quick){ spawn("star", TRAY.x, TRAY.y-66, 8, {vy:-140, life:.9, col:"#FFD66B"}); }
+  }
+  updateStepButtons();
+  if(n>=3) setTimeout(finishCheckin, 650);
+}
+/* 入罐：期待脸 → 飞行 → 落罐 → 庆祝 */
+let fly = null;
+function finishCheckin(){
+  const jar = activeJar();
+  sprite.emote = "expect"; /* 期待脸 */
+  setTimeout(()=>{
+    fly = { t:0, dur:.5, foodId: making.foodId, special: (jar.count+1)%10===0 ? (jar.count+1) : 0, frost: making.frost };
+    making = null;                       /* 期待脸结束 → 中央大食物退场，只留飞行那份（防双影） */
+    sprite.emote = "cheer"; SFX.cheer();
+  }, 850);
+}
+function flyStep(dt){
+  if(!fly) return;
+  fly.t += dt;
+  if(fly.t >= fly.dur){
+    const jar = activeJar();
+    const seed = Math.floor(Math.random()*9999);
+    jar.items.push({ foodId: fly.foodId, seed, special: fly.special, frost: fly.frost });
+    jar.count++; jar.streak = (jar.lastDate===todayStr()) ? jar.streak : (jar.lastDate && dayDiff(jar.lastDate, todayStr())===1 ? jar.streak+1 : 1);
+    jar.best = Math.max(jar.best, jar.streak);
+    jar.lastDate = todayStr();
+    jar.history[todayStr()] = (jar.history[todayStr()]||0)+1;
+    state.globalStreak = state.lastGlobalDate===todayStr() ? state.globalStreak
+      : (state.lastGlobalDate && dayDiff(state.lastGlobalDate, todayStr())===1 ? state.globalStreak+1 : 1);
+    state.lastGlobalDate = todayStr();
+    state.feedChances = Math.min(9, (state.feedChances|0) + 1);   /* 每次打卡得一次喂食机会（上限 9） */
+    save(); refreshAll(); checkMilestones();   /* 打卡后检查里程碑勋章解锁 */
+    fly = null; making = null; checkin = null;
+    jarShake = .45; jarGlow = 1;
+    SFX.jar(); setTimeout(()=>SFX.sparkle(), 120);
+    /* 罐口金色粒子爆发 */
+    const limited = jar.count%10===0;
+    spawn("gold", JAR.x, JAR.y+4, limited?24:14, {vy:-190, life:.85, size:limited?4.5:3.4, g:420});
+    if(limited){
+      setTimeout(()=>SFX.cheer(), 200);
+      toast("✨ 第 "+jar.count+" 枚 · 主题限定款！");
+      sprite.emote = "love";
+    } else {
+      sprite.emote = "happy";
+    }
+    $("#step-bar").classList.remove("show");
+    $("#check-btn").classList.remove("pulse"); /* 今日已完成，停止脉冲 */
+    spriteSay(pick(SLOGAN_CHEER), 3800);       /* 打完卡当场夸一句 */
+    /* 密度升级：第 21 枚起整罐压缩成小颗（这罐总共能装 50 枚） */
+    if(jar.items.length === 21 && !packAnim){
+      packAnim = { t:0, dur:.8 }; jarShake = .4;
+      toast("罐子升级密度啦：食物变小，这罐能装 50 枚了～");
+    }
+    /* 满罐封存：达到总容量 → 扎成礼品罐收在地上，换新罐继续装 */
+    if(jar.items.length >= JAR_CAP) sealJar(jar);
+    setTimeout(()=>{ sprite.emote = "blink"; if(Math.random()<.3){ /* 舍不得，回来拍拍罐子 */
+        sprite.emote="happy"; sprite.hopT=.5; SFX.pat();
+        setTimeout(()=>spriteRoam(), 900);
+      } else spriteRoam(); }, 1600);
+  }
+}
+function drawFly(c){
+  if(!fly || !c) return;
+  const t = ease.out(Math.min(fly.t/fly.dur,1));
+  const x = lerp(TRAY.x, JAR.x, t);
+  const y = lerp(TRAY.y-20, JAR.y+10, t) - Math.sin(t*Math.PI)*80;
+  const cell = lerp(foodCell(MAKE_TARGET, fly.foodId), foodCell(JAR_TARGET, fly.foodId), t);
+  /* 拖尾 */
+  c.save(); c.globalAlpha = .3;
+  paintFood(c, fly.foodId, x-8, y-4, cell, 3, fly.special, fly.frost);
+  c.restore();
+  paintFood(c, fly.foodId, x, y, cell, 3, fly.special, fly.frost);
+}
+
+/* ============================================================
+   弹层：建罐 / 统计 / 帮助
+   ============================================================ */
+let editingJar = null, formSel = { theme:"dessert", food:"donut" };
+function openModal(html){ hideSpeech(); const m = $("#modal-layer"); m.innerHTML = `<div class="modal">${html}</div>`; m.classList.add("show"); }
+function closeModal(){ $("#modal-layer").classList.remove("show"); $("#modal-layer").innerHTML=""; }
+function openJarModal(jar, keepSel){
+  editingJar = jar;
+  const prevName = keepSel && $("#jar-name") ? $("#jar-name").value : null;
+  if(jar && !keepSel){ formSel = { theme: jar.themeId, food: jar.foodId }; }
+  else if(!jar && !keepSel){ formSel = { theme:"dessert", food:"donut" }; }
+  const themeOpts = THEMES.map(t=>`<button class="opt ${formSel.theme===t.id?"sel":""}" data-t="${t.id}">
+    <div class="ic">${t.glyph}</div><div class="nm">${t.name}</div><div class="ds">${t.desc}</div></button>`).join("");
+  openModal(`
+    <h2>${jar?"编辑目标罐":"新建目标罐"}</h2>
+    <div class="sub">一个罐子 = 一个目标；招牌食物系统已预存，每天打卡会随机生成一款，不必选</div>
+    <div class="field"><label>目标名字</label>
+      <input type="text" id="jar-name" maxlength="12" placeholder="例如：每天运动30分钟" value="${keepSel && prevName!==null ? prevName : (jar?jar.name:"")}"></div>
+    <div class="field"><label>选择主题（决定罐子配色与房间装饰）</label>
+      <div class="opt-grid" id="theme-grid">${themeOpts}</div></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="m-cancel">取消</button>
+      ${jar?`<button class="btn btn-danger" id="m-del" style="flex:.6">删除</button>`:""}
+      <button class="btn btn-primary" id="m-save">保存</button>
+    </div>`);
+  $("#m-cancel").addEventListener("click", closeModal);
+  $("#m-save").addEventListener("click", ()=>{
+    const name = ($("#jar-name").value||"").trim() || (THEME_MAP[formSel.theme].name);
+    if(editingJar){
+      const themeChanged = editingJar.themeId !== formSel.theme;
+      editingJar.name = name; editingJar.themeId = formSel.theme;
+      if(themeChanged){ editingJar.foodId = pick(THEME_MAP[formSel.theme].foods);
+        if(editingJar.todayProgress<3) editingJar.todayProgress = 0; }
+    } else {
+      if(state.jars.length>=8){ toast("最多 8 个罐子哦"); return; }
+      state.jars.push(defaultJar(name, formSel.theme));
+      state.activeJar = state.jars.length-1;
+    }
+    save(); refreshAll(); paintStepIcons(); closeModal(); SFX.pop();
+    toast(editingJar?"罐子更新啦":"新罐子诞生啦！");
+    editingJar = null;
+  });
+  if($("#m-del")) $("#m-del").addEventListener("click", ()=>{
+    if(state.jars.length<=1){ toast("至少留一个罐子哦"); return; }
+    state.jars = state.jars.filter(j=>j!==editingJar);
+    state.activeJar = 0; save(); refreshAll(); closeModal(); toast("罐子已收回仓库");
+  });
+  $$("#theme-grid .opt").forEach(b=>b.addEventListener("click", ()=>{
+    formSel.theme = b.dataset.t;
+    formSel.food = THEME_MAP[formSel.theme].foods[0];
+    openJarModal(editingJar, true); /* 保留选择，只重画 */
+  }));
+}
+/* 随机名字池：用户没灵感时随手点一个 */
+const NAME_POOL = ["罐罐","团团","嘟嘟","豆豆","奶昔","布丁","糯米","可可","团子","阿福","星星","棉花","汤圆","芝麻","小满"];
+function openNameModal(){
+  hideSpeech();
+  const cur = (state.spriteName||"").replace(/"/g,'&quot;');
+  openModal(`
+    <h2>给小精灵取个名字</h2>
+    <div class="sub">它会一直陪你坚持每一天 ✨</div>
+    <div class="field"><label>名字（最多 8 个字）</label>
+      <input type="text" id="sprite-name-input" maxlength="8" placeholder="例如：团团" value="${cur}"></div>
+    <div class="sub" style="margin:4px 0 8px">没灵感？点一个试试：</div>
+    <div class="name-pool">${NAME_POOL.map(n=>`<button class="name-chip" type="button">${n}</button>`).join("")}</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="name-cancel" type="button">取消</button>
+      <button class="btn btn-primary" id="name-ok" type="button">确定</button>
+    </div>`);
+  const inp = $("#sprite-name-input");
+  inp.focus(); inp.select();
+  const commit = ()=>{
+    const v = ((inp.value||"").trim().slice(0,8)) || "罐罐";
+    state.spriteName = v; state.spriteNamed = true; save();
+    updateSpriteCard(); closeModal();
+    spriteSay(v + " 这个名字我喜欢！以后请多指教～", 3600);
+    sprite.emote = "cheer"; sprite.hopT = .6; SFX.pop();
+  };
+  $("#name-ok").addEventListener("click", commit);
+  $("#name-cancel").addEventListener("click", closeModal);
+  inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); commit(); } });
+  $$(".name-pool .name-chip").forEach(b=> b.addEventListener("click", ()=>{ inp.value = b.textContent; inp.focus(); }));
+}
+/* 单个目标的累计打卡天数（以 history 去重日数为准，count 兜底） */
+function jarDays(jar){
+  if(!jar) return 0;
+  const h = jar.history || {};
+  return Math.max(Object.keys(h).length, jar.count|0);
+}
+/* 打卡完成后检查里程碑：该目标累计达到阈值且未记录 → 记录达成日期 + 庆祝 + 弹成就 */
+function checkMilestones(){
+  const jar = activeJar(); if(!jar) return;
+  const n = jarDays(jar);
+  const newly = MILESTONES.filter(m => n >= m.days && !(jar.medals && jar.medals[m.days]));
+  if(!newly.length) return;
+  newly.forEach(m=>{ jar.medals[m.days] = todayStr(); });
+  save();
+  newly.sort((a,b)=>a.days-b.days);
+  const top = newly[newly.length-1];
+  sprite.emote = "cheer"; sprite.hopT = .7; SFX.cheer();
+  setTimeout(()=>openMedalModal(top, jar.medals[top.days], jar.name), 420);
+  toast(newly.length>1 ? ("🏅 「"+jar.name+"」一口气解锁了 "+newly.length+" 枚勋章！")
+                       : ("🏅 「"+jar.name+"」解锁新勋章：" + top.title));
+}
+/* 成就详情弹窗：放大版勋章 + 标题 + 标语 + 达成日期 + 所属目标 + 坚持记录 + 文案 */
+function openMedalModal(m, dateStr, jarName){
+  hideSpeech();
+  openModal(`
+    <h2>${m.title} 🏅</h2>
+    <div class="sub">${m.slogan}</div>
+    <div class="medal-show"><canvas id="medal-big" width="180" height="180"></canvas></div>
+    <div class="field"><label>所属目标</label><div class="stat-line">${jarName||"—"}</div></div>
+    <div class="field"><label>达成日期</label><div class="stat-line">${dateStr||"—"}</div></div>
+    <div class="field"><label>坚持记录</label><div class="stat-line">该目标累计打卡满 ${m.days} 天</div></div>
+    <div class="medal-desc">${m.desc}</div>
+    <div class="btn-row"><button class="btn btn-primary" id="medal-close" type="button">收下这份荣誉</button></div>`);
+  const cv = $("#medal-big");
+  if(cv && cv.getContext){ const cc = cv.getContext("2d"); if(cc){ cc.imageSmoothingEnabled=false; cc.clearRect(0,0,cv.width,cv.height); setT(cv.width/90, 0, 0); drawMedal(cc, 45, 45, m, performance.now()/1000, !!state.night, 1.55); } }
+  const close = $("#medal-close"); if(close) close.addEventListener("click", closeModal);
+}
+/* 演示 / 预览：用 ?demo=medals 打开，或控制台调用 __starjar.previewMedals()
+   构造一份模拟累计打卡数据（每个目标独立解锁各自的里程碑），且不写盘、不污染真实存档 */
+const DEMO = (typeof location!=="undefined") && /[?&]demo=medals/.test(location.search||"");
+function fmtDate(d){ return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+/* 给一个罐子灌入指定天数的模拟打卡历史，并按阈值解锁它自己的勋章 */
+function fillDemoJar(jar, days){
+  const hist = {}, base = new Date();
+  for(let i=0;i<days;i++){ const d = new Date(base); d.setDate(d.getDate()-i); hist[fmtDate(d)] = 1; }
+  jar.history = hist; jar.count = days; jar.streak = days; jar.best = days;
+  jar.lastDate = todayStr(); jar.medals = {};
+  MILESTONES.forEach(m=>{
+    if(days >= m.days){ const d = new Date(base); d.setDate(d.getDate() - (days - m.days)); jar.medals[m.days] = fmtDate(d); }
+  });
+  /* 演示罐内堆叠与封存：超过 50 天的目标 = 地上 1 袋封存的礼品罐 + 罐内 35 枚（第二档密度）；
+     不超过 50 天的按天数装（>20 天即第二档密度），刚好展示「食物变小能装更多」 */
+  jar.items = demoItems(jar, Math.min(days, 35));
+  jar.archives = [];
+  if(days > JAR_CAP){
+    const sd = new Date(base); sd.setDate(sd.getDate() - (days - JAR_CAP));
+    jar.archives.push({ id:"ademo"+Math.floor(Math.random()*99), sealedAt: fmtDate(sd),
+      count: JAR_CAP, items: demoItems(jar, JAR_CAP), themeId: jar.themeId });
+  }
+  return jar;
+}
+/* 演示用：给罐子生成 n 枚随机食物（每第 10 枚彩虹限定款，和真实打卡一致） */
+function demoItems(jar, n){
+  const foods = (THEME_MAP[jar.themeId] || THEMES[0]).foods;
+  const arr = [];
+  for(let i=1;i<=n;i++) arr.push({ foodId: pick(foods), seed: Math.floor(Math.random()*9999),
+    special: i%10===0 ? i : 0, frost: genFrost(jar) });
+  return arr;
+}
+function buildDemoState(targetDays){
+  const days = targetDays || 365;
+  const s = defaultState();
+  /* 目标一：累计满（默认 365 天 → 6 枚全解锁） */
+  const jar = s.jars[0]; jar.name = "每天运动30分钟";
+  fillDemoJar(jar, days);
+  /* 目标二：进度少一些，用来展示「每个目标有自己独立的里程碑」 */
+  const jar2 = defaultJar("每晚阅读20分钟", "fruit", "watermelon");
+  fillDemoJar(jar2, Math.min(days, 42));
+  s.jars.push(jar2);
+  s.globalStreak = days; s.lastGlobalDate = todayStr();
+  s.spriteName = "团团"; s.spriteNamed = true;
+  s.feedChances = 3;                          /* 预览附赠几次喂食机会，可直接体验 */
+  return s;
+}
+function previewMedals(targetDays){
+  SAVE_DISABLED = true;                 /* 预览绝不写盘，保护真实存档 */
+  state = buildDemoState(targetDays || 365);
+  refreshAll();
+  const n1 = Object.keys(state.jars[0].medals).length, n2 = Object.keys(state.jars[1].medals).length;
+  toast("已加载模拟打卡：「每天运动30分钟」"+state.jars[0].count+" 天·"+n1+" 枚勋章；「每晚阅读20分钟」"+state.jars[1].count+" 天·"+n2+" 枚 —— 切换左侧目标可看各自的勋章柜");
+}
+function openStatsModal(){
+  const jar = activeJar();
+  const now = new Date();
+  const dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const firstDow = (new Date(now.getFullYear(), now.getMonth(), 1).getDay()+6)%7;
+  const dowNames = ["一","二","三","四","五","六","日"];
+  let cells = dowNames.map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<firstDow;i++) cells += `<div class="day empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const on = jar.history[ds];
+    const td = ds===todayStr();
+    cells += `<div class="day ${on?"on":""} ${td?"today":""}">${d}</div>`;
+  }
+  const monthCount = Object.keys(jar.history).filter(k=>k.startsWith(now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0"))).length;
+  openModal(`
+    <h2>${jar.name} · 小账本</h2>
+    <div class="sub">${THEME_MAP[jar.themeId].name} · ${FOODS[jar.foodId].name} · 建于 ${jar.created}</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="v">${jar.streak}</div><div class="k">连续打卡</div></div>
+      <div class="stat-box"><div class="v">${jar.count}</div><div class="k">累计入罐</div></div>
+      <div class="stat-box"><div class="v">${jar.best}</div><div class="k">最佳连续</div></div>
+    </div>
+    <div class="field"><label>本月已打卡 ${monthCount} 天</label><div class="cal">${cells}</div></div>
+    <div class="io-row">
+      <button class="btn btn-ghost" id="m-export">导出备份</button>
+      <button class="btn btn-ghost" id="m-import">导入备份</button>
+      <button class="btn btn-ghost" id="m-edit" style="flex:.7">编辑</button>
+    </div>`);
+  $("#m-export").addEventListener("click", ()=>{
+    const pad = n => String(n).padStart(2,"0");
+    const now = new Date();
+    const stamp = now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate());
+    const blob = new Blob([JSON.stringify(state,null,1)], {type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "星星罐罐备份-"+stamp+".json"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+    toast("备份已下载，建议存到网盘 / 微信文件传输助手");
+  });
+  $("#m-import").addEventListener("click", ()=>{
+    const inp = document.createElement("input"); inp.type = "file"; inp.accept = ".json,application/json";
+    inp.addEventListener("change", ()=>{
+      const f = inp.files[0]; if(!f) return;
+      const r = new FileReader();
+      r.onload = ()=>{ try{
+        const data = JSON.parse(r.result);
+        if(!data.jars || !Array.isArray(data.jars) || !data.jars.length) throw 0;
+        if(!confirm("导入会覆盖当前所有进度（"+state.jars.length+" 个目标），确定继续吗？\n建议先「导出备份」留一份当前的。")) return;
+        state = data;
+        normalizeStateJars();                                   /* 旧备份也要补 archives/medals 缺省 + 满罐迁移 */
+        if(typeof state.activeJar!=="number"||!state.jars[state.activeJar]) state.activeJar=0;
+        if(typeof state.night!=="boolean") state.night=false;
+        if(typeof state.globalStreak!=="number") state.globalStreak=0;
+        save(); refreshAll(); paintStepIcons(); closeModal(); SFX.sparkle();
+        toast("导入成功！"+state.jars.length+" 个目标已恢复");
+      }catch(e){ toast("文件格式不对哦"); } };
+      r.readAsText(f);
+    });
+    inp.click();
+  });
+  $("#m-edit").addEventListener("click", ()=>{ closeModal(); openJarModal(jar); });
+}
+function openHelpModal(){
+  openModal(`
+    <h2>玩法说明</h2>
+    <div class="sub">把坚持变成看得见的资产</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--ink)">
+      ① <b>建罐</b>：点左下角「＋」，选个主题就好，一个罐子就是一个目标；招牌食物系统已预存，每天打卡会随机生成一款，不用选。<br>
+      ② <b>打卡</b>：点中间的打卡按钮，三样食材会浮在画面下方，按 1 → 2 → 3 依次点击，
+      甜品会在<b>画面正中央放大</b>做好：放上<b>胚体</b> → 绕圈刷<b>糖霜</b> → 撒<b>点缀</b>。<br>
+      ③ <b>入罐</b>：三样齐了，甜品会飞进罐子，炸出一圈金色星星，天数 +1。<br>
+      ④ <b>成长</b>：坚持 7 / 21 / 30 / 50 / 100 / 365 天，罐子会陆续戴上蝴蝶结、围巾、皇冠、光环。<br>
+      ⑤ <b>不断签</b>：偶尔忘了也没关系，星星不会消失，随时重新开始。<br>
+      ⑥ <b>小彩蛋</b>：点一下罐子可以摇一摇，点精灵他会开心起跳；每第 10 枚出主题限定款。<br>
+      ⑦ <b>昼夜</b>：右上角 🌙 按钮可手动切换夜晚模式，整屋会变暗、窗户换成夜空，花环和星星更亮。<br>
+      ⑧ <b>小精灵</b>：左下角是它的专属状态牌——显示<b>名字</b>和<b>心情</b>（每天打卡心情就会变好）；点名字或 ✏️ 可以取名 / 改名。每次打卡获得 1 次<b>喂食机会</b>，点「🍯 喂食」小精灵会开心地吃饭。<br>
+      ⑨ <b>勋章</b>：每个目标都有自己的里程碑——该目标累计打卡 10 / 30 / 50 / 100 / 200 / 365 天，瓶子上方的荣誉柜里就会放上对应的甜品勋章，点一下能看到详细成就（切换左侧目标，柜子里换的就是那个目标的勋章）。<br>
+      ⑩ <b>满罐封存</b>：一个罐子最多装 <b>50 枚</b>——前 20 枚是大颗的；装到第 21 枚时整罐食物会「嗖」地变小，之后就能密密麻麻装到 50 枚。装满后罐子会<b>扎上礼品缎带、缩成小罐搬到地上</b>（罐子左右两边），同时自动开一个新罐继续装；点地上的礼品罐能看里面装了什么。目标的连续天数、勋章都不受影响。<br>
+      ⑪ <b>进度备份（重要）</b>：进度保存在<b>这台设备的浏览器里</b>（不会自动上传）。点右上角 📊 →「导出备份」下载存档文件，建议每周存一份到网盘 / 微信文件传输助手；换手机、清浏览器数据前，用「导入备份」选那个文件就能全部恢复。
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" id="m-ok">知道啦</button></div>`);
+  $("#m-ok").addEventListener("click", ()=>{ closeModal(); state.seenHelp = true; save(); });
+}
+let toastT = null;
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+/* ============================================================
+   小精灵标语气泡（偶尔在头顶冒出）
+   ============================================================ */
+let speechTimer = null, speechCooldownUntil = 0;
+function speechEl(){ return document.getElementById("sprite-speech"); }
+function spriteSay(text, dur=3400){
+  const el = speechEl(); if(!el) return;
+  el.textContent = text; el.classList.add("show");
+  clearTimeout(speechTimer);
+  speechTimer = setTimeout(()=>el.classList.remove("show"), dur);
+}
+function hideSpeech(){ const el = speechEl(); if(el) el.classList.remove("show"); clearTimeout(speechTimer); }
+/* 把精灵头顶的逻辑坐标映射到屏幕（CSS）坐标，气泡定位用 */
+function spriteScreenPos(){
+  const r = stage.getBoundingClientRect();
+  const lyTop = sprite.y - SPR_LOGICAL * (SPR_BB.h / SPR_BB.w);   /* 精灵头顶逻辑 y */
+  /* 锚在精灵「右上角」：右边缘 + 头顶，气泡从此向上、向右展开，绝不压住本体 */
+  let sx = r.left + (sprite.x + SPR_LOGICAL/2) * (r.width / W);
+  let sy = r.top + lyTop * (r.height / H);
+  const minY = r.top + 56; if(sy < minY) sy = minY;              /* 别钻进 HUD */
+  return { sx, sy };
+}
+function updateSpeech(){
+  const el = speechEl(); if(!el || !el.classList.contains("show")) return;
+  const p = spriteScreenPos();
+  el.style.left = p.sx + "px";
+  el.style.top  = p.sy + "px";
+  /* 右侧放不下时翻到左上角（气泡在精灵右缘时向左展开），同样不挡本体 */
+  const flip = (p.sx + (el.offsetWidth||180) + 8 > window.innerWidth);
+  el.classList.toggle("flip", flip);
+}
+/* 小精灵心情：根据「今天是否打卡 / 连续打卡天数 / 距上次打卡多久」推导 */
+function spriteMood(){
+  const today = todayStr();
+  const last = state.lastGlobalDate;
+  if(last === today){
+    if(state.globalStreak >= 7) return { emoji:"😄", text:"活力满满！" };
+    if(state.globalStreak >= 3) return { emoji:"😊", text:"心情不错~" };
+    return { emoji:"🙂", text:"今天很开心" };
+  }
+  const gap = last ? dayDiff(last, today) : 999;
+  if(gap === 1) return { emoji:"😐", text:"有点想你…" };
+  if(gap <= 4) return { emoji:"😢", text:"想主人了" };
+  return { emoji:"🥺", text:"好寂寞…" };
+}
+/* 状态牌：左下角专属区域，显示名字 / 心情 / 喂食机会（不再悬浮头顶，位置固定无需每帧跟随） */
+function updateSpriteCard(){
+  const card = document.getElementById("sprite-card"); if(!card) return;
+  card.classList.toggle("night", !!state.night);                 /* 夜晚切深色底 */
+  const named = !!(state.spriteNamed && state.spriteName);
+  const nameEl = $("#sc-name");
+  nameEl.innerHTML = "";
+  if(named){ nameEl.textContent = state.spriteName; }
+  else { const ph = document.createElement("span"); ph.className = "ph"; ph.textContent = "点此取名"; nameEl.appendChild(ph); }
+  const m = spriteMood();
+  $("#sc-mood-emoji").textContent = m.emoji;
+  $("#sc-mood-text").textContent = m.text;
+  const fc = state.feedChances|0;
+  $("#sc-feed-count").textContent = "🍖 ×" + fc;
+  const btn = $("#sc-feed-btn");
+  btn.disabled = fc <= 0;
+  const slim = card.classList.contains("slim");   /* 窄屏：机会数并进按钮文案 */
+  btn.textContent = fc > 0 ? ("🍯 喂食" + (slim ? " ×"+fc : "")) : "🍯 先去打卡";
+}
+/* 状态牌定位：按逻辑坐标找画面里真正空闲的一块（宽屏=左壁口袋；竖屏=可见区顶部），
+   避开左栏 / HUD / 罐子左缘 / 盆栽，并随画布裁切（cover）自适应；窗口变化时重算 */
+function positionSpriteCard(){
+  const card = document.getElementById("sprite-card"); if(!card) return;
+  const r = stage.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const sx = r.width / W, sy = r.height / H;                 /* 逻辑 → 屏幕缩放 */
+  const visL = Math.max(0, -r.left / sx), visR = Math.min(W, (window.innerWidth  - r.left) / sx);
+  const visT = Math.max(0, -r.top  / sy), visB = Math.min(H, (window.innerHeight - r.top ) / sy);
+  card.classList.remove("compact", "slim");
+  let lx, ly;
+  const cw0 = card.offsetWidth / sx;                  /* 标准档逻辑宽 */
+  if(606 + cw0 <= visR - 8){
+    /* 宽屏：最右侧墙面（画框下方、地面摆件上方；精灵地面活动在 y≈490，不冲突） */
+    lx = visR - cw0 - 8;
+    ly = 205;
+    ly = Math.min(ly, 440 - card.offsetHeight / sy);  /* 别压到右侧摆件顶（逻辑 452） */
+    ly = Math.max(ly, visT + 70 / sy);                /* 别钻进 HUD */
+  } else if(visL <= 130 && visR > 330){
+    /* 降级：左壁口袋（逻辑 x 124–300：左栏右缘外、罐子左缘内；y 206 起：小窗下） */
+    lx = Math.max(visL + 8, 124);
+    ly = 206;
+    let cw = card.offsetWidth;
+    if(lx + cw / sx > 298){ card.classList.add("compact"); cw = card.offsetWidth; }  /* 口袋窄 → 紧凑档 */
+    if(lx + cw / sx > 298){ card.classList.remove("compact"); card.classList.add("slim"); }  /* 还挤 → 迷你档 */
+    ly = Math.min(ly, 426 - card.offsetHeight / sy);        /* 别压到盆栽顶（逻辑 430） */
+    ly = Math.max(ly, visT + 70 / sy);                      /* 别钻进 HUD */
+  } else {
+    /* 竖屏 / 窄屏：可见区顶部左侧（罐口精灵之上、HUD 之下） */
+    card.classList.add("slim");
+    lx = visL + 12;
+    ly = visT + 104 / sy;
+  }
+  card.style.left = (r.left + lx * sx) + "px";
+  card.style.top  = (r.top  + ly * sy) + "px";
+  updateSpriteCard();                                       /* 档位可能变了，顺手刷新按钮文案 */
+}
+/* 荣誉柜目标名牌：跟随柜顶（DOM 文字，中文不走 canvas）；文字变化才重写，避免每帧布局 */
+let __plateText = "";
+function positionMedalPlate(){
+  const el = document.getElementById("medal-plate"); if(!el) return;
+  /* 文字先更新（不依赖布局，保证内容始终正确） */
+  const jar = activeJar();
+  const txt = ((jar && jar.name) ? jar.name : "我的目标") + " · 累计 " + jarDays(jar) + " 天";
+  if(txt !== __plateText){ el.textContent = txt; el.title = txt; __plateText = txt; }
+  const r = stage.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const sx = r.width / W, sy = r.height / H;
+  el.style.fontSize = Math.max(9, Math.min(13, 10*sx)) + "px";
+  el.style.maxWidth = Math.max(80, (MEDAL_CAB.w - 22) * sx) + "px";
+  el.style.left = (r.left + (MEDAL_CAB.x + MEDAL_CAB.w/2) * sx) + "px";
+  el.style.top  = (r.top  + (MEDAL_CAB.y - 4) * sy) + "px";   /* 挂在柜顶檐口上 */
+}
+/* 喂食：每次打卡获得一次机会；点食物罐按钮给小精灵投喂，它会开心地吃 */
+function feedSprite(){
+  if((state.feedChances|0) <= 0){
+    sprite.emote = "expect"; sprite.emoteT = 1.4;
+    spriteSay("今天还没有喂食机会，先去打卡吧～", 2600);
+    return;
+  }
+  state.feedChances = (state.feedChances|0) - 1;
+  save(); updateSpriteCard();
+  sprite.emote = "eat"; sprite.eatT = 2.4; sprite.emoteT = 2.4; sprite.hopT = .4;
+  spriteSay(pick(["嗯~好吃！","好好吃～","好满足呀🥰","谢谢主人！"]), 2400);
+  SFX.pop();
+  /* 开心小星星（粉） */
+  spawn("star", sprite.x, sprite.y - SPR_LOGICAL*0.6, 5, {vy:-70, life:.9, size:3, col:"#FFA9C9", g:120});
+}
+/* 标语库：未打卡时温柔催一下；已打卡时夸一下；打卡完成当场夸 */
+const SLOGAN_REMIND = [
+  "今天打卡了吗，主人？",
+  "主人，今天还没打卡哦～",
+  "要坚持呀，主人！",
+  "今天的目标完成了吗？",
+  "来打卡吧，主人想你啦～",
+];
+const SLOGAN_DONE = [
+  "今天也完成啦，好棒！",
+  "主人真棒，又坚持了一天～",
+  "继续保持呀，主人！",
+  "今天的坚持，看得见啦 ✨",
+];
+const SLOGAN_CHEER = [
+  "好棒，又坚持了一天！",
+  "今天也完成啦，主人真棒～",
+  "又坚持了一天，么么哒 ✨",
+];
+/* 偶尔冒标语：空闲、没弹层、不在打卡流程时才说；打完卡后少打扰 */
+function scheduleSlogans(){
+  setInterval(()=>{
+    const el = speechEl(); if(!el) return;
+    if(document.hidden) return;
+    const ml = $("#modal-layer"); if(ml && ml.classList.contains("show")) return;
+    if(making || fly || checkin) return;
+    if(el.classList.contains("show")) return;
+    const now = performance.now();
+    if(now < speechCooldownUntil) return;
+    const jar = activeJar();
+    const doneToday = jar.todayDate===todayStr() && jar.todayProgress>=3;
+    const chance = doneToday ? 0.28 : 0.72;
+    if(Math.random() < chance){
+      spriteSay(pick(doneToday ? SLOGAN_DONE : SLOGAN_REMIND), 3400);
+      speechCooldownUntil = now + (doneToday ? 60000 : 26000);
+    }
+  }, 8000);
+}
+
+/* ============================================================
+   交互：canvas 点击（摇罐 / 点精灵）
+   ============================================================ */
+function stagePoint(e){
+  const r = stage.getBoundingClientRect();
+  const cx = (e.touches? e.touches[0].clientX : e.clientX) - r.left;
+  const cy = (e.touches? e.touches[0].clientY : e.clientY) - r.top;
+  return { x: cx/r.width*W, y: cy/r.height*H };
+}
+function onStageTap(e){
+  const p = stagePoint(e);
+  /* 勋章（瓶子上方荣誉柜，优先检测；取命中心最近的一枚，避免格间边界误判） */
+  let best = null, bestD = 1e9;
+  for(const h of medalHits){
+    const dd = Math.hypot(p.x-h.x, p.y-h.y);
+    if(dd < h.r && dd < bestD){ best = h; bestD = dd; }
+  }
+  if(best){
+    const m = MILESTONES.find(x=>x.days===best.days);
+    const jar = state.jars.find(j=>j.id===best.jarId) || activeJar();
+    if(m){ openMedalModal(m, jar && jar.medals && jar.medals[best.days], jar && jar.name); return; }
+  }
+  /* 礼品罐（大罐两侧地面）：点开看这袋的详情 */
+  for(const g of giftHits){
+    if(Math.hypot(p.x-g.x, p.y-g.y) < g.r){
+      const jar = state.jars.find(j=>j.id===g.jarId) || activeJar();
+      const arch = jar && jar.archives && jar.archives.find(a=>a.id===g.archId);
+      if(arch){ openGiftModal(arch, jar, g.idx+1); SFX.pop(); return; }
+    }
+  }
+  /* 精灵 */
+  if(Math.hypot(p.x-sprite.x, p.y-sprite.y) < 56){
+    if(!state.spriteNamed){ openNameModal(); return; }      /* 还没名字 → 先引导取名 */
+    sprite.emote = "love"; sprite.loveT = 2.6;              /* 被摸头：love 短暂停留后自动还原（loveT 见 updateSprite） */
+    sprite.emoteT = Math.max(sprite.emoteT, 2.6);           /* 反应期间漫游冷却不许抢着换脸 */
+    sprite.hopT = .6; SFX.pat();
+    return;
+  }
+  /* 罐子 */
+  if(p.x>JAR.x-JAR.w/2-20 && p.x<JAR.x+JAR.w/2+20 && p.y>JAR.y-20 && p.y<JAR.y+JAR.h+20){
+    jarShake = .5; SFX.squish();
+    spawn("dust", JAR.x+rnd(-30,30), JAR.y+30, 5, {vy:-50, life:.6, size:3, col:"#FFF3D8", g:160});
+  }
+}
+stage.addEventListener("click", onStageTap);
+$$("#step-bar .step-btn").forEach(b=>b.addEventListener("click", ()=>clickStep(+b.dataset.step)));
+$("#check-btn").addEventListener("click", startCheckin);
+$("#btn-add").addEventListener("click", ()=>openJarModal(null));
+$("#btn-stats").addEventListener("click", openStatsModal);
+$("#btn-help").addEventListener("click", openHelpModal);
+$("#btn-night").addEventListener("click", ()=>{
+  state.night = !state.night; bgKey = "";   /* 清缓存，房间层按新模式重绘 */
+  save(); refreshNightBtn(); SFX.pop();
+});
+$("#modal-layer").addEventListener("click", e=>{ if(e.target.id==="modal-layer") closeModal(); });
+
+/* ============================================================
+   启动
+   ============================================================ */
+function boot(){
+  if(DEMO){ SAVE_DISABLED = true; state = buildDemoState(365); }   /* 预览模式：模拟累计打卡，且不写盘 */
+  else load();
+  initSpriteImg();   /* 预烘焙罐罐精灵位图（沙箱/无 canvas 环境自动降级为空图） */
+  if(!DEMO && LS_OK && !lsGet(LS_KEY)) save(); /* 首次启动即落盘（沙箱/预览环境跳过） */
+  /* 兼容旧数据 & 修复缺省字段 */
+  state.jars.forEach(j=>{
+    j.todayProgress = j.todayProgress||0; j.todayDate = j.todayDate||"";
+    j.items = j.items||[]; j.history = j.history||{};
+    j.medals = j.medals||{};                     /* 每个目标独立的里程碑勋章 */
+    if(j.todayDate!==todayStr()) j.todayProgress = 0;
+  });
+  /* 兼容旧存档：早期勋章是全局的，迁移到第一个目标名下（归属最接近的旧数据） */
+  if(state.medals && typeof state.medals==="object" && Object.keys(state.medals).length){
+    const j0 = state.jars[0];
+    if(j0 && !Object.keys(j0.medals||{}).length) j0.medals = Object.assign({}, state.medals);
+  }
+  delete state.medals;
+  /* 兼容旧存档：精灵名字字段宽容兜底 */
+  if(typeof state.spriteName!=="string") state.spriteName="罐罐";
+  if(typeof state.spriteNamed!=="boolean") state.spriteNamed=false;
+  if(typeof state.feedChances!=="number" || state.feedChances<0) state.feedChances=0;   /* 喂食机会宽容兜底 */
+  resize(); refreshAll(); paintStepIcons();
+  /* 有未完成的三步进度 → 自动恢复 */
+  const jar = activeJar();
+  if(jar.todayDate===todayStr() && jar.todayProgress>0 && jar.todayProgress<3){
+    checkin = { step: jar.todayProgress, comboT: performance.now() };
+    making = { foodId: jar.foodId, stage: jar.todayProgress, coatT: jar.todayProgress>=2?1:0, special: 0, popT: 0, frost: genFrost(jar) };
+    paintStepIcons(); updateStepButtons();
+    $("#step-bar").classList.add("show");
+    spriteGoto(MAKING_SPRITE.x, MAKING_SPRITE.y, 170);
+  }
+  if(!state.seenHelp) toast("点下方「打卡」按钮开始今天的目标 ✨");
+  if(!LS_OK) toast("当前预览环境无法保存进度，把文件下载后用浏览器打开即可存档～");
+  scheduleSlogans();   /* 偶尔让小精灵冒标语提醒 / 夸奖 */
+  updateSpriteCard();                         /* 初始化状态牌内容（名字 / 心情 / 喂食机会） */
+  positionSpriteCard();                       /* 再按画面空闲区定位（内部会随档位再刷新一次） */
+  positionMedalPlate();                       /* 荣誉柜目标名牌定位 + 内容 */
+  $("#sc-rename").addEventListener("click", openNameModal);     /* 点 ✏️ 改名 */
+  $("#sc-name").addEventListener("click", openNameModal);       /* 没取名时点头像名也能取名 */
+  $("#sc-feed-btn").addEventListener("click", feedSprite);      /* 点食物罐按钮喂食 */
+  /* 窗口变化 → 重算状态牌位置（画布 cover 裁切会变） */
+  window.addEventListener("resize", positionSpriteCard);
+  window.addEventListener("orientationchange", ()=>setTimeout(positionSpriteCard, 120));
+  startDriver();
+}
+/* 覆盖通用 update：加入飞行动力学（渲染交给 render 内的 drawFly） */
+const _origUpdate = update;
+update = function(dt){ _origUpdate(dt); flyStep(dt); };
+/* 调试接口（控制台/自动化测试可用） */
+window.__starjar = {
+  get state(){ return state; }, get checkin(){ return checkin; }, get making(){ return making; },
+  get particles(){ return particles; }, get sprite(){ return sprite; }, get fly(){ return fly; },
+  get medalHits(){ return medalHits; },
+  todayStr, defaultJar, THEMES, FOODS, spriteSay, hideSpeech, updateSprite,
+  updateSpriteCard, positionSpriteCard,
+  setName(n){ const v=((n||"").trim().slice(0,8))||"罐罐"; state.spriteName=v; state.spriteNamed=true; save(); updateSpriteCard(); return state.spriteName; },
+  getName(){ return state.spriteNamed ? state.spriteName : ""; },
+  feed(){ feedSprite(); },                       /* 调试：喂食 */
+  getMood(){ return spriteMood(); },             /* 调试：当前心情 */
+  getFeed(){ return state.feedChances|0; },      /* 调试：剩余喂食机会 */
+  previewMedals(targetDays){ previewMedals(targetDays); },   /* 模拟累计打卡预览勋章墙（不写盘） */
+  setNight(v){ state.night = !!v; bgKey = ""; },   /* 手动切换昼夜并重绘房间层 */
+  /* 调试：把罐罐精灵单独渲染到任意尺寸画布（保持原型不变，仅叠加表情），供核对表情用 */
+  renderSpriteTo(canvas, emote){
+    const cx = canvas.getContext("2d"); if(!cx || !SPR_IMG) return;
+    const oldCUR = CUR;
+    const K = canvas.width / SPR_LOGICAL;           /* 让精灵铺满宽度（随 SPR_LOGICAL 自适应） */
+    CUR = { K, VX:0, VY:0 };
+    cx.clearRect(0,0,canvas.width,canvas.height);
+    sprite.x = SPR_LOGICAL/2; sprite.y = Math.floor(canvas.height/K) - 2; sprite.tx = sprite.x; sprite.ty = sprite.y;
+    sprite.state = "walk"; sprite.frame = 0; sprite.blinkT = 999; sprite.emote = emote||"blink";
+    drawSprite(cx);
+    CUR = oldCUR;
+  },
+};
+/* 运行错误可见化：出问题弹提示，避免"看起来完全没反应" */
+window.addEventListener("error", e=>{
+  if(window.__errShown) return; window.__errShown = true;
+  try{ toast("运行出了点问题：" + (e.message || "未知错误")); }catch(_){}
+});
+boot();
+</script>
+</body>
+</html>
