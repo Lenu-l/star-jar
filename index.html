@@ -28,7 +28,7 @@ html,body{ height:100%; overflow:hidden; background:#FBF3E4;
   color:var(--ink); }
 button{ font-family:inherit; border:none; background:none; cursor:pointer; color:inherit; }
 input{ font-family:inherit; }
-#app{ position:fixed; inset:0; overflow:hidden; }
+#app{ position:fixed; inset:0; overflow:hidden; background:#FBF3E4; }
 #stage{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
   width:min(100vw, calc(100vh * 4 / 3)); height:min(100vh, calc(100vw * 3 / 4));
   display:block; touch-action:none; image-rendering:pixelated; background:#FBF3E4; }
@@ -213,7 +213,7 @@ input{ font-family:inherit; }
 #sprite-speech.flip::before{ left:auto; right:17px; }
 
 /* 荣誉柜目标名牌：柜顶小木牌（DOM 文字，随画面缩放；写清柜子里是哪个目标的成就） */
-#medal-plate{ position:absolute; left:0; top:0; z-index:34; transform:translate(-50%,-50%);
+#medal-plate{ position:absolute; left:0; top:0; z-index:34; transform:translate(-50%,0);
   background:linear-gradient(180deg,#F6E4C4,#EBD3A9);
   border:2px solid #B98A5C; border-radius:9px;
   padding:1px 8px; font-size:12px; font-weight:800; color:#7A5A3A;
@@ -277,41 +277,46 @@ input{ font-family:inherit; }
 .medal-desc{ font-size:13px; line-height:1.7; color:var(--ink-soft); background:var(--cream);
   border:2px solid var(--line); border-radius:12px; padding:12px 14px; margin-top:6px; }
 
-/* 移动端 / 竖屏优化：画面铺满、HUD 与左栏收紧、避让刘海 */
-@media (orientation: portrait){
-  /* 竖屏下舞台铺满视口（cover 裁剪），避免上下大片留白 */
-  #stage{ width:max(100vw, calc(100vh * 4 / 3)); height:max(100vh, calc(100vw * 3 / 4)); }
-}
+/* 移动端 / 竖屏优化：整幅场景完整显示（contain，不裁切），罐子会变小但植物/装饰/礼品罐都看得见；
+   顶部 HUD 单行紧凑、左侧目标栏改成 HUD 下方横向滚动条（不再压在场景左侧）、精灵状态牌移到场景下方空白区 */
 @media (max-width:560px){
-  /* 顶部 HUD：单行紧凑条，避免换行压到荣誉柜（顶部重叠的根因） */
-  #hud{ flex-wrap:nowrap; gap:6px; padding:6px 8px; padding-top:max(6px, env(safe-area-inset-top)); }
-  .hud-left{ gap:6px; flex-wrap:nowrap; }
-  .hud-right{ gap:6px; flex-wrap:nowrap; }
-  .hud-goal{ display:none; }                 /* 目标名已由荣誉柜名牌显示，隐藏避免重复+拥挤 */
+  /* 顶部 HUD：紧凑单行，目标名横幅隐藏（已由荣誉柜名牌显示，避免重复+拥挤） */
+  #hud{ flex-wrap:nowrap; gap:5px; padding:7px 9px; padding-top:max(7px, env(safe-area-inset-top)); }
+  .hud-left{ gap:5px; flex-wrap:nowrap; }
+  .hud-right{ gap:5px; flex-wrap:nowrap; }
+  .hud-goal{ display:none; }
   .hud-streak{ padding:4px 8px; }
-  .hud-streak .num{ font-size:18px; }
-  .hud-days{ font-size:12px; padding:4px 8px; white-space:nowrap; }
-  .hud-days b{ font-size:16px; }
-  .hud-total{ font-size:10px; padding:4px 8px; white-space:nowrap; }
+  .hud-streak .num{ font-size:16px; }
+  .hud-days{ font-size:11px; padding:4px 7px; white-space:nowrap; }
+  .hud-days b{ font-size:15px; }
+  .hud-total{ font-size:9px; padding:4px 7px; white-space:nowrap; }
   .icon-btn{ width:30px; height:30px; font-size:15px; }
-  #dock{ bottom:max(10px, env(safe-area-inset-bottom)); padding:5px 8px; }
-  #check-btn{ width:54px; height:54px; margin:0 2px; }
-  .step-btn{ width:54px; height:54px; }
-  /* 左侧目标栏：从荣誉柜下方开始、限高，不再延伸到左下角与精灵牌/打卡台打架 */
-  #jar-rail{ width:88px; top:178px; bottom:auto; max-height:42vh; overflow-y:auto; gap:6px; padding-bottom:2px; }
-  .jar-card{ padding:6px 6px; }
+  /* 左侧目标栏 → 改成 HUD 下方的横向滚动条，不再压在场景左侧（避免与植物/罐子重叠） */
+  #jar-rail{ left:8px; right:8px; top:calc(54px + env(safe-area-inset-top)); bottom:auto; width:auto;
+    flex-direction:row; align-items:center; height:auto; max-height:none; overflow:visible; gap:7px; padding:6px 2px; z-index:18; }
+  #rail-list{ flex-direction:row; flex:1 1 auto; overflow-x:auto; overflow-y:hidden; padding-bottom:2px; }
+  .jar-card{ width:104px; flex:none; }
   .jar-card .jc-name{ font-size:10px; }
   .jar-card .jc-meta{ font-size:9px; }
-  .rail-add{ height:34px; font-size:20px; flex:none; }
-  /* 精灵状态牌：移动端固定到左下角（绕过画布逻辑坐标，彻底避免与左栏重叠） */
-  #sprite-card{ position:fixed; left:8px; top:auto; bottom:max(10px, env(safe-area-inset-bottom));
-    width:104px; max-width:104px; }
-  #sprite-card .sc-rename{ display:none; }    /* 窄屏隐藏改名按钮，点名字本身即可改名 */
+  .rail-add{ width:40px; height:40px; font-size:20px; flex:none; }
+  /* 精灵状态牌：移动端固定到左下角（场景正下方空白区，不与场景/打卡台打架） */
+  #sprite-card{ position:fixed; left:8px; top:auto; bottom:calc(76px + env(safe-area-inset-bottom));
+    width:140px; max-width:140px; }
+  #sprite-card .sc-rename{ display:none; }
   #sprite-card .sc-head{ gap:4px; }
   #sprite-card .sc-name{ font-size:13px; max-width:100%; }
   #sprite-card .sc-feed{ font-size:11px; margin-top:6px; }
   #sprite-card .sc-mood{ font-size:12px; margin-top:6px; padding:4px 7px; }
   #sprite-card .sc-feed-btn{ font-size:12px; padding:7px 0; margin-top:7px; }
+  #dock{ bottom:max(12px, env(safe-area-inset-bottom)); padding:5px 8px; }
+  #check-btn{ width:56px; height:56px; margin:0 2px; }
+  .step-btn{ width:54px; height:54px; }
+}
+/* 超窄屏（≤380px）：再收一点，保证 HUD 单行不被裁切 */
+@media (max-width:380px){
+  .hud-days{ font-size:10px; }
+  .hud-total{ display:none; }
+  .hud-streak .num{ font-size:15px; }
 }
 </style>
 </head>
@@ -2634,12 +2639,16 @@ function positionMedalPlate(){
   const r = stage.getBoundingClientRect();
   if(!r.width || !r.height) return;
   const sx = r.width / W, sy = r.height / H;
-  el.style.fontSize = Math.max(9, Math.min(13, 10*sx)) + "px";
-  el.style.maxWidth = Math.max(80, (MEDAL_CAB.w - 22) * sx) + "px";
+  const mobile = window.innerWidth <= 560;
+  /* 移动端场景被缩得很小，名牌用固定可读字号；桌面端随场景缩放 */
+  el.style.fontSize = (mobile ? 11 : Math.max(9, Math.min(13, 10*sx))) + "px";
+  /* 名牌宽度：桌面不超出柜宽；移动端允许略宽（柜顶上方空白区够放，不被裁切） */
+  el.style.maxWidth = (mobile ? Math.min(MEDAL_CAB.w*sx*2.2, window.innerWidth - 16)
+                              : Math.max(80, (MEDAL_CAB.w - 22) * sx)) + "px";
   el.style.left = (r.left + (MEDAL_CAB.x + MEDAL_CAB.w/2) * sx) + "px";
-  let plateTop = (r.top  + (MEDAL_CAB.y - 4) * sy);           /* 挂在柜顶檐口上 */
-  if(window.innerWidth <= 560) plateTop += 14;                /* 移动端 HUD 是单行条，名牌下移避开 */
-  el.style.top  = plateTop + "px";
+  /* 名牌挂在柜顶檐口“正上方”，与奖章格留 6px 间隙，绝不压住奖章 */
+  const plateH = el.offsetHeight || 20;
+  el.style.top = (r.top + MEDAL_CAB.y * sy - plateH - 6) + "px";
 }
 /* 喂食：每次打卡获得一次机会；点食物罐按钮给小精灵投喂，它会开心地吃 */
 function feedSprite(){
