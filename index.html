@@ -101,15 +101,23 @@ input{ font-family:inherit; }
   box-shadow:0 5px 12px rgba(0,0,0,.18); }
 .jar-card .jc-glyph{ font-size:16px; line-height:1; width:28px; height:28px; border-radius:9px;
   display:flex; align-items:center; justify-content:center; background:var(--c, var(--brown));
-  box-shadow:0 1px 3px rgba(0,0,0,.15); margin-bottom:2px; border:2px solid rgba(255,255,255,.85); }
+  box-shadow:0 1px 3px rgba(0,0,0,.15); margin-bottom:2px; border:2px solid rgba(255,255,255,.85); position:relative; }
 .jar-card.active .jc-glyph{ background:#fff; }
 .jc-name{ font-size:12px; font-weight:800; color:var(--ink); line-height:1.2;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .jar-card.active .jc-name{ color:var(--ink); }
 .jc-meta{ font-size:10px; color:var(--ink-soft); }
 .jar-card.active .jc-meta{ color:rgba(60,40,25,.82); }
-.jar-card.done::after{ content:"✓"; position:absolute; top:5px; right:7px; font-size:12px; font-weight:800; color:var(--c); }
-.jar-card.active.done::after{ color:#fff; }
+/* 今日已打卡：在头像右下角点一个小对勾徽标（不再占用右上角，留给删除按钮） */
+.jar-card.done .jc-glyph::after{ content:"✓"; position:absolute; right:-5px; bottom:-5px; width:15px; height:15px;
+  display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:#fff;
+  background:var(--c); border:1.5px solid #fff; border-radius:50%; }
+.jar-card.active.done .jc-glyph::after{ background:#fff; color:var(--c); }
+/* 每张卡片右上角的删除按钮（不小心建错的罐子可随时删掉） */
+.jar-card .jc-del{ position:absolute; top:3px; right:4px; width:18px; height:18px; line-height:16px; text-align:center;
+  font-size:14px; font-weight:800; color:#fff; background:rgba(206,72,72,.92); border:1.5px solid rgba(255,255,255,.75);
+  border-radius:50%; cursor:pointer; z-index:3; padding:0; }
+.jar-card .jc-del:active{ transform:scale(.86); }
 .rail-add{ flex:none; width:100%; height:38px; font-size:22px; font-weight:800; color:var(--brown-dk);
   background:var(--paper); border:3px dashed var(--line); border-radius:14px; box-shadow:0 3px 0 rgba(140,90,43,.18);
   pointer-events:auto; }
@@ -197,20 +205,17 @@ input{ font-family:inherit; }
 #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
 /* 小精灵标语气泡：出现在精灵右上角、绝不挡住精灵本体；右侧放不下时翻到左上角 */
-#sprite-speech{ position:absolute; z-index:45; max-width:200px; pointer-events:none;
-  background:var(--paper); border:3px solid var(--line); border-radius:12px;
-  padding:7px 12px; font-size:13px; font-weight:700; color:var(--brown-dk); text-align:center;
-  box-shadow:var(--shadow); line-height:1.35; white-space:normal;
+#sprite-speech{ position:absolute; z-index:45; max-width:160px; pointer-events:none;
+  background:var(--paper); border:2px solid var(--line); border-radius:11px;
+  padding:6px 10px; font-size:12px; font-weight:700; color:var(--brown-dk); text-align:center;
+  box-shadow:var(--shadow); line-height:1.3; white-space:normal; word-break:break-word;
   transform:translate(0,-100%) scale(.9); opacity:0;
   transition:opacity .22s ease, transform .22s ease; }
 #sprite-speech.show{ opacity:1; transform:translate(0,-100%) scale(1); }
-#sprite-speech.show.flip{ transform:translate(-100%,-100%) scale(1); }
-#sprite-speech::after{ content:""; position:absolute; left:16px; bottom:-12px;
-  border:6px solid transparent; border-top-color:var(--line); }
-#sprite-speech::before{ content:""; position:absolute; left:17px; bottom:-7px;
-  border:5px solid transparent; border-top-color:var(--paper); z-index:1; }
-#sprite-speech.flip::after{ left:auto; right:16px; }
-#sprite-speech.flip::before{ left:auto; right:17px; }
+#sprite-speech::after{ content:""; position:absolute; left:16px; bottom:-10px;
+  border:5px solid transparent; border-top-color:var(--line); }
+#sprite-speech::before{ content:""; position:absolute; left:17px; bottom:-6px;
+  border:4px solid transparent; border-top-color:var(--paper); z-index:1; }
 
 /* 荣誉柜目标名牌：柜顶小木牌（DOM 文字，随画面缩放；写清柜子里是哪个目标的成就） */
 #medal-plate{ position:absolute; left:0; top:0; z-index:34; transform:translate(-50%,0);
@@ -2079,17 +2084,34 @@ function renderRail(){
     const theme = THEME_MAP[jar.themeId] || THEMES[0];
     const days = Object.keys(jar.history||{}).length;
     const gifts = (jar.archives||[]).length;
-    const card = document.createElement("button");
+    const card = document.createElement("div");
     card.className = "jar-card" + (i===state.activeJar?" active":"")
       + (jar.todayDate===todayStr() && jar.todayProgress>=3 ? " done":"");
     card.style.setProperty("--c", theme.color);
     card.style.setProperty("--ctint", _mix(theme.color, "#FFFFFF", 0.62));   /* 提高饱和度，每罐主题色更分明显眼 */
-    card.innerHTML = `<span class="jc-glyph">${theme.glyph}</span>`
+    card.innerHTML = `<span class="jc-del" title="删除这个目标">×</span>`
+      + `<span class="jc-glyph">${theme.glyph}</span>`
       + `<span class="jc-name">${jar.name}</span>`
       + `<span class="jc-meta">连 ${jar.streak} · 累 ${days}天${gifts?` · 🎁${gifts}`:""}</span>`;
     card.addEventListener("click", ()=>{ if(i===state.activeJar) return; state.activeJar=i; save(); refreshAll(); SFX.pop(); });
+    const del = card.querySelector(".jc-del");
+    del.addEventListener("click", (e)=>{ e.stopPropagation(); deleteJar(i); });
     list.appendChild(card);
   });
+}
+/* 删除某个目标罐（含其打卡记录与勋章）；至少保留一个；删除后修正当前选中索引 */
+function deleteJar(i){
+  const jar = state.jars[i];
+  if(!jar) return;
+  if(state.jars.length<=1){ toast("至少留一个罐子哦～"); return; }
+  if(!confirm(`确定删除目标「${jar.name}」吗？\n该罐的打卡记录和勋章会一并删除，无法恢复。`)) return;
+  state.jars.splice(i,1);
+  if(state.activeJar > i) state.activeJar--;
+  else if(state.activeJar === i) state.activeJar = Math.min(i, state.jars.length-1);
+  if(state.activeJar >= state.jars.length) state.activeJar = state.jars.length-1;
+  if(state.activeJar < 0) state.activeJar = 0;
+  save(); refreshAll(); paintStepIcons();
+  toast("已删除目标「"+jar.name+"」");
 }
 function renderDock(){
   const jar = activeJar(), food = FOODS[jar.foodId];
@@ -2546,11 +2568,17 @@ function spriteScreenPos(){
 function updateSpeech(){
   const el = speechEl(); if(!el || !el.classList.contains("show")) return;
   const p = spriteScreenPos();
+  el.classList.remove("flip");                       /* 始终固定在精灵右上角，不做左右翻转（避免到处飘） */
   el.style.left = p.sx + "px";
   el.style.top  = p.sy + "px";
-  /* 右侧放不下时翻到左上角（气泡在精灵右缘时向左展开），同样不挡本体 */
-  const flip = (p.sx + (el.offsetWidth||180) + 8 > window.innerWidth);
-  el.classList.toggle("flip", flip);
+  /* 水平夹取：紧贴精灵右上角；若超出右边界则整体左移，保证整句文字都在屏内、不溢出 */
+  const w = el.offsetWidth || 160;
+  const maxLeft = Math.max(6, window.innerWidth - 6 - w);
+  if(p.sx > maxLeft) el.style.left = maxLeft + "px";
+  /* 顶部夹取：气泡在精灵头顶上方，别钻进顶部 HUD / 刘海区 */
+  const h = el.offsetHeight || 36;
+  const minTop = 58 + h;                             /* 锚点(y) 至少要够气泡整块落在 HUD 之下 */
+  if(p.sy < minTop) el.style.top = minTop + "px";
 }
 /* 小精灵心情：根据「今天是否打卡 / 连续打卡天数 / 距上次打卡多久」推导 */
 function spriteMood(){
@@ -2589,10 +2617,21 @@ function updateSpriteCard(){
    避开左栏 / HUD / 罐子左缘 / 盆栽，并随画布裁切（cover）自适应；窗口变化时重算 */
 function positionSpriteCard(){
   const card = document.getElementById("sprite-card"); if(!card) return;
-  /* 移动端（≤560px）：覆盖层由 CSS 固定到左下角，不走画布逻辑坐标，避免与左栏/荣誉柜打架 */
+  /* 移动端（≤560px）：场景用 contain 居中，下方留有一截空区；把状态牌锚到场景正下方、
+     刚好填进这块空区（上移一点，不再贴着打卡台把底部留空），且不压到打卡台 */
   if(window.innerWidth <= 560){
-    card.style.left = ""; card.style.top = "";            /* 清除桌面端可能残留的内联坐标 */
-    card.classList.remove("compact", "slim");
+    const r = stage.getBoundingClientRect();
+    if(!r.width || !r.height){ card.style.left=""; card.style.top=""; card.style.bottom=""; card.classList.remove("compact","slim"); updateSpriteCard(); return; }
+    const ch = card.offsetHeight || 130;
+    const dock = document.getElementById("dock");
+    const dockTop = dock ? dock.getBoundingClientRect().top : (window.innerHeight - 80);
+    let top = r.bottom + 10;                              /* 紧跟场景下方，填进空区 */
+    const maxTop = dockTop - ch - 8;                     /* 别压到打卡台 */
+    if(top > maxTop) top = Math.max(maxTop, r.bottom - ch);
+    card.style.left = "8px";
+    card.style.bottom = "auto";
+    card.style.top = Math.max(8, top) + "px";
+    card.classList.remove("compact","slim");
     updateSpriteCard(); return;
   }
   const r = stage.getBoundingClientRect();
