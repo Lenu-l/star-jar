@@ -319,7 +319,9 @@ input{ font-family:inherit; }
   #app{ --sh: min(78vh, calc((100vw - 190px) * 3)); --sw: calc(var(--sh) * 4 / 3); }
   #stage, #sprite-layer{
     width: var(--sw); height: var(--sh);
-    top: max(56px, calc(100vh - 86px - var(--sh))); left:50%; transform:translate(-50%,-50%);
+    /* 注意 translate(-50%,-50%) 会让 top 表示「中心点」而非顶边，所以要加半个场景高 */
+    top: calc(max(56px, 100vh - 86px - var(--sh)) + var(--sh) / 2);
+    left:50%; transform:translate(-50%,-50%);
   }
   /* 顶部 HUD：紧凑单行，目标名横幅隐藏（已由荣誉柜名牌显示，避免重复+拥挤） */
   #hud{ flex-wrap:nowrap; gap:5px; padding:7px 9px; padding-top:max(7px, env(safe-area-inset-top)); }
