@@ -28,15 +28,28 @@ html,body{ height:100%; overflow:hidden; background:#FBF3E4;
   color:var(--ink); }
 button{ font-family:inherit; border:none; background:none; cursor:pointer; color:inherit; }
 input{ font-family:inherit; }
-#app{ position:fixed; inset:0; overflow:hidden; background:#FBF3E4; }
-#stage{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:min(100vw, calc(100vh * 4 / 3)); height:min(100vh, calc(100vw * 3 / 4));
+#app{ position:fixed; inset:0; overflow:hidden; background:#FBF3E4;
+  --sk:1;                                   /* 场景缩放系数：手机端放大一点，少留空 */
+  --scy:50%;                                /* 场景垂直中心：竖屏下移，避免画面顶在上面、底部空一大截 */ }
+#stage{ position:absolute; left:50%; top:var(--scy); transform:translate(-50%,-50%);
+  width:min(calc(100vw * var(--sk)), calc(100vh * 4 / 3));
+  height:min(100vh, calc(100vw * var(--sk) * 3 / 4));
   display:block; touch-action:none; image-rendering:pixelated; background:#FBF3E4; }
 /* 精灵专属顶层画布：覆盖在所有场景/装饰/罐子乃至左栏之上（z-index 高于左栏 18、低于标语气泡 28），
    本身透明且 pointer-events:none —— 既不挡左栏点击，又保证小精灵永远在最上层、不会被任何物品穿透 */
-#sprite-layer{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:min(100vw, calc(100vh * 4 / 3)); height:min(100vh, calc(100vw * 3 / 4));
+#sprite-layer{ position:absolute; left:50%; top:var(--scy); transform:translate(-50%,-50%);
+  width:min(calc(100vw * var(--sk)), calc(100vh * 4 / 3));
+  height:min(100vh, calc(100vw * var(--sk) * 3 / 4));
   z-index:40; pointer-events:none; image-rendering:pixelated; }
+/* 竖屏：① 场景适度放大（1.2×）——contain 下 4:3 画面在高屏手机上只占三分之一高、上下大片留白，
+   放大后更饱满；左右各裁掉约 10% 最外圈纯墙面，花环(x110–710)/盆栽/礼品罐/摆件均完整可见。
+   ② 场景整体下移（54vh），画面不再顶在上方、底部空区收窄。
+   ③ 用 min/max 钳制：矮屏自动上移，保证「场景 + 精灵状态牌 + 打卡台」三者都塞得下；
+      同时不低于顶部横滑条下沿，避免压住目标卡片。 */
+@media (orientation: portrait){
+  #app{ --sk:1.2;
+    --scy: max(calc(118px + 45vw), min(54vh, calc(100vh - 195px - 45vw))); }
+}
 
 /* ============ 顶部 HUD ============ */
 #hud{ position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between;
@@ -285,6 +298,9 @@ input{ font-family:inherit; }
 /* 移动端 / 竖屏优化：整幅场景完整显示（contain，不裁切），罐子会变小但植物/装饰/礼品罐都看得见；
    顶部 HUD 单行紧凑、左侧目标栏改成 HUD 下方横向滚动条（不再压在场景左侧）、精灵状态牌移到场景下方空白区 */
 @media (max-width:560px){
+  /* 手机端场景适度放大（1.2×）：contain 下 4:3 画面在高屏手机上只占三分之一高、上下大片留白，
+     放大后画面更饱满；左右各裁掉约 10% 的最外圈纯墙面，花环(x110–710)/盆栽/礼品罐/摆件均完整可见 */
+  #app{ --sk:1.2; }
   /* 顶部 HUD：紧凑单行，目标名横幅隐藏（已由荣誉柜名牌显示，避免重复+拥挤） */
   #hud{ flex-wrap:nowrap; gap:5px; padding:7px 9px; padding-top:max(7px, env(safe-area-inset-top)); }
   .hud-left{ gap:5px; flex-wrap:nowrap; }
@@ -2617,12 +2633,15 @@ function updateSpriteCard(){
    避开左栏 / HUD / 罐子左缘 / 盆栽，并随画布裁切（cover）自适应；窗口变化时重算 */
 function positionSpriteCard(){
   const card = document.getElementById("sprite-card"); if(!card) return;
-  /* 移动端（≤560px）：场景用 contain 居中，下方留有一截空区；把状态牌锚到场景正下方、
-     刚好填进这块空区（上移一点，不再贴着打卡台把底部留空），且不压到打卡台 */
-  if(window.innerWidth <= 560){
+  /* 移动端竖屏（≤560px 且高≥宽）：场景用 contain 居中，下方留有一截空区；把状态牌锚到场景正下方、
+     刚好填进这块空区（上移一点，不再贴着打卡台把底部留空），且不压到打卡台。
+     横屏小窗（如 560×420）仍走桌面「墙面口袋」逻辑，避免贴左边压住目标栏 */
+  if(window.innerWidth <= 560 && window.innerHeight >= window.innerWidth){
     const r = stage.getBoundingClientRect();
     if(!r.width || !r.height){ card.style.left=""; card.style.top=""; card.style.bottom=""; card.classList.remove("compact","slim"); updateSpriteCard(); return; }
-    const ch = card.offsetHeight || 130;
+    card.classList.remove("compact"); card.classList.add("slim");   /* 窄屏瘦身：机会数并进按钮文案，少占一行 */
+    updateSpriteCard();                                             /* 先刷新文案，再量高度才准 */
+    const ch = card.offsetHeight || 110;
     const dock = document.getElementById("dock");
     const dockTop = dock ? dock.getBoundingClientRect().top : (window.innerHeight - 80);
     let top = r.bottom + 10;                              /* 紧跟场景下方，填进空区 */
@@ -2631,8 +2650,7 @@ function positionSpriteCard(){
     card.style.left = "8px";
     card.style.bottom = "auto";
     card.style.top = Math.max(8, top) + "px";
-    card.classList.remove("compact","slim");
-    updateSpriteCard(); return;
+    return;
   }
   const r = stage.getBoundingClientRect();
   if(!r.width || !r.height) return;
