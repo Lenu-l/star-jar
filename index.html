@@ -265,6 +265,14 @@ input{ font-family:inherit; }
 #sprite-card.slim .sc-name{ font-size:13px; max-width:100%; }
 #sprite-card.slim .sc-mood{ font-size:12px; margin-top:6px; padding:4px 7px; }
 #sprite-card.slim .sc-feed-btn{ font-size:12px; padding:7px 0; margin-top:7px; }
+/* 桌面扁横条（固定最右上角，不挡墙面装饰） */
+#sprite-card.flat{ width:auto; max-width:280px; display:flex; flex-direction:row; align-items:center; gap:8px; padding:5px 10px; }
+#sprite-card.flat .sc-head{ display:flex; align-items:center; gap:4px; }
+#sprite-card.flat .sc-name{ font-size:14px; }
+#sprite-card.flat .sc-rename{ font-size:12px; padding:1px 4px; }
+#sprite-card.flat .sc-mood{ margin:0; font-size:12px; padding:3px 7px; white-space:nowrap; }
+#sprite-card.flat .sc-feed{ display:none; }            /* 机会数并进喂食按钮文案 */
+#sprite-card.flat .sc-feed-btn{ margin:0; width:auto; height:28px; padding:0 11px; font-size:12px; line-height:1; }
 #sprite-card.night{ background:linear-gradient(180deg,#3A3357,#2E2848); border-color:#5A4F7A; color:#FDF3E0;
   box-shadow:0 6px 0 rgba(0,0,0,.30), 0 9px 18px rgba(0,0,0,.35); }
 .sc-head{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
@@ -312,13 +320,14 @@ input{ font-family:inherit; }
    ③ 精灵状态牌竖排固定在右侧上方（荣誉柜旁边，不压罐子/地面）。
    ④ 礼品罐与地面摆件在 JS 里同步挪到罐子正前方（computeGiftSlots / drawThemeDecor），
       避免被左右两块面板挡住。 */
-@media (orientation: portrait) and (max-width:560px){
+@media (max-width: 820px) and (orientation: portrait){
   /* 场景尺寸公式（2026-11-02 按用户反馈重调：罐子/地板下移、底部少留白、面板避开花环）：
      · 宽度：罐子（逻辑宽 196）必须完整落在左右两块面板（各 84 宽）之间并留间隙 → 在 (100vw-208px) 内放下 196；
      · 高度：只绘制到逻辑 y=570（画布底部裁掉 30 单位空地）→ 罐子和地板整体下移、底部不再空一大截；
        场景底边贴在打卡台上沿，顶边不低于 HUD 下沿（150px = HUD 约 64 + 打卡区约 86）。 */
   #app{ --sw: min( calc((100vw - 208px) * 800 / 196),
-                   calc((100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 800 / 570) );
+                   calc((100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 800 / 570),
+                   calc(100vw * 1.15) );
         --sh: calc(var(--sw) * 570 / 800); }
   #stage, #sprite-layer{
     width: var(--sw); height: var(--sh);
@@ -859,9 +868,11 @@ let packAnim = null;                             // { t, dur } 跨档压缩演�
 function packLevel(n){ return n<=20 ? 0 : 1; }   // 堆叠档位：≤20 枚大颗 / 更多则压缩小颗
 const TRAY = { x:400, y:222 };                    // 打卡台：上移到瓶口上方，食物放大组装（仍保持半屏大）
 const SPRITE_HOME = { x:400, y:233 };             // 精灵罐口位（坐在罐口上，初版 demo）
-/* 手机竖屏布局判定：与 CSS `@media (orientation:portrait) and (max-width:560px)` 保持一致。
-   该场景会放大裁切（只保留中段），因此精灵锚点 / 禁区 / 礼品罐槽位 / 地面摆件都要按此切换 */
-function isMobilePortrait(){ return window.innerWidth <= 560 && window.innerHeight >= window.innerWidth; }
+/* 窄屏（竖向）布局判定：与 CSS `@media (max-width:820px) and (orientation:portrait)` 保持一致。
+   竖向窄窗（平板竖屏、拖窄的竖向浏览器窗口）之前会落入"桌面宽面板"把边缘装饰全遮住，
+   故竖向 ≤820 走窄面板布局；横屏窄窗仍走桌面（面板占比小、装饰基本可见）。
+   该场景放大裁切（只保留中段），因此精灵锚点 / 禁区 / 礼品罐槽位 / 地面摆件都要按此切换 */
+function isMobilePortrait(){ return window.innerWidth <= 820 && window.innerHeight >= window.innerWidth; }
 const MAKING_SPRITE_DESKTOP = { x:690, y:492 };  // 打卡时精灵旁观位（站地板右侧看）
 const MAKING_SPRITE_MOBILE = { x:430, y:520 };   // 手机端：旁观位站罐前地面中央、避开右侧装饰/礼品罐
 const ANCHORS_DESKTOP = [                        // 精灵漫游锚点（已避开盆栽/摆件/罐前，防穿身）
@@ -995,9 +1006,13 @@ function drawRoom(c, theme, night){
   P(c, 0, FLOOR_Y, W, FLOOR_H, wood1);
   P(c, 0, FLOOR_Y+FLOOR_H-7, W, 7, wood2);
   for(let x=0; x<W; x+=60) P(c, x, FLOOR_Y, 5, FLOOR_H, wood3);
+  /* 画框仅桌面绘制（窄屏右状态卡会压住它）；窗户桌面保持左上原味，窄屏右移避开左目标栏，
+     仍保留墙上装饰；右状态卡压画框故窄屏隐藏画框，墙上装饰由花环 / 星 / 挂饰 / 礼品罐补足 */
   drawWindow(c, night);
-  drawFramePicture(c, theme);
-  drawFloorPlant(c, isMobilePortrait() ? 708 : 150, FLOOR_Y);
+  if(!isMobilePortrait()) drawFramePicture(c, theme);
+  /* 盆栽：桌面放罐左地面(x150)；手机端左目标栏只挡到逻辑≈213，故放到「罐子左侧空地」(x258)，
+     明显落在开阔地面、不压左栏也不贴罐身 */
+  drawFloorPlant(c, isMobilePortrait() ? 258 : 150, FLOOR_Y);
   drawThemeDecor(c, theme, night);
   if(night){
     /* 夜色氛围：整屋压一层暖蓝暗调（在罐子之前画，罐子仍明亮治愈） */
@@ -1005,7 +1020,7 @@ function drawRoom(c, theme, night){
   }
 }
 function drawWindow(c, night){
-  const sx=52, sy=82, sw=116, sh=110;
+  const sx=52 + (isMobilePortrait()?108:0), sy=82, sw=116, sh=110;   /* 窄屏右移避开左目标栏，保留墙上装饰 */
   if(night){
     /* 夜空：深蓝底 + 几颗星 + 月牙 */
     P(c, sx, sy, sw, sh, "#27314F");
@@ -1043,10 +1058,11 @@ const DECOR_CHARMS = [
 ];
 const GARLAND = []; for(let x=110; x<=710; x+=75) GARLAND.push(x);
 function drawDecorOverlay(c, night, t){
-  drawGarland(c, t);                          /* 顶部淡紫小花环 */
+  const oy = isMobilePortrait() ? 46 : 0;     /* 窄屏整体下移，避开顶部 HUD 并填充上方空白 */
+  drawGarland(c, t, oy);                       /* 顶部淡紫小花环 */
   /* 漂浮闪烁小星星（避开左栏与罐子区域），含淡紫色 */
   for(let i=0;i<DECOR_STARS.length;i++){
-    const x=DECOR_STARS[i][0], y=DECOR_STARS[i][1];
+    const x=DECOR_STARS[i][0], y=DECOR_STARS[i][1]+oy;
     const big = (Math.sin(t*2.4 + i*0.9) > -0.2);   /* 利落 twinkle */
     const col = DECOR_STAR_COLS[i];
     P(c, x, y, 2, 2, col);
@@ -1054,7 +1070,7 @@ function drawDecorOverlay(c, night, t){
   }
   /* 悬挂小星星 / 小爱心（轻微摇摆 + 暖光晕；夜晚更亮） */
   for(const C of DECOR_CHARMS){
-    drawCharm(c, C.x + Math.sin(t*0.9 + C.phase)*4, 18, C, night);
+    drawCharm(c, C.x + Math.sin(t*0.9 + C.phase)*4, 18+oy, C, night);
   }
   if(night){
     /* 夜萤火虫：几只缓缓飘 */
@@ -1201,8 +1217,9 @@ function drawMedals(c, night){
 /* 花环弧线：以画面中心 410 为最低点、两端齐平的对称轻微下垂（不再歪斜） */
 const garlandY = x => { const f = (x - 410) / 300; return 12 + 16 * (1 - f*f); };
 /* 顶部淡紫小花环：一串小五瓣花，沿对称下垂弧均匀坐着（绳穿花心，随风轻晃） */
-function drawGarland(c, t){
-  const Y = x => garlandY(x) + Math.round(Math.sin(t*1.2 + x*0.02)*1.2);  /* 极轻微起伏，不破坏对称 */
+function drawGarland(c, t, oy){
+  oy = oy||0;
+  const Y = x => garlandY(x) + oy + Math.round(Math.sin(t*1.2 + x*0.02)*1.2);  /* 极轻微起伏，不破坏对称 */
   /* 主绳：连接各节点（同在一条对称抛物线上 → 平滑下垂弧） */
   for(let i=0;i<GARLAND.length-1;i++){
     pLine(c, GARLAND[i], Y(GARLAND[i]), GARLAND[i+1], Y(GARLAND[i+1]), "#B79AD0", 2);
@@ -1247,8 +1264,9 @@ function drawFloorPlant(c, x, fy){
 }
 function drawThemeDecor(c, theme){
   /* 主题摆件：一律踩在「地板顶线」上（地板上面，不沉进棕色木纹）；
-     桌面端放罐右地面；手机端左侧被目标栏挡死，放到「罐子正右方的地面」（x≈655，踩线、不压罐身） */
-  const x = isMobilePortrait() ? 655 : 580, fy = 500;
+     桌面端放罐右地面(x580)；手机端右状态卡挡到逻辑≈588、罐右缘≈498，故放到「罐子右侧空地」(x530)，
+     明显落在开阔地面、不压右栏也不贴罐身 */
+  const x = isMobilePortrait() ? 545 : 580, fy = 500;
   if(theme.decor==="oden"){
     /* 小汤锅（蒸汽由粒子系统负责） */
     pRoundRect(c, x-26, fy-30, 52, 30, 6, "#9AA7B0");
@@ -2732,24 +2750,42 @@ function updateSpriteCard(){
   $("#sc-feed-count").textContent = "🍖 ×" + fc;
   const btn = $("#sc-feed-btn");
   btn.disabled = fc <= 0;
-  const slim = card.classList.contains("slim");   /* 窄屏：机会数并进按钮文案 */
+  const slim = card.classList.contains("slim") || card.classList.contains("flat");   /* 窄档/扁卡：机会数并进按钮文案 */
   btn.textContent = fc > 0 ? ("🍯 喂食" + (slim ? " ×"+fc : "")) : "🍯 先去打卡";
 }
-/* 状态牌定位：按逻辑坐标找画面里真正空闲的一块（宽屏=左壁口袋；竖屏=可见区顶部），
-   避开左栏 / HUD / 罐子左缘 / 盆栽，并随画布裁切（cover）自适应；窗口变化时重算 */
+/* HUD 可见内容下沿：header 自身有 14px 上下 padding，直接用 its bottom 会把留白也算成遮挡，
+   导致桌面扁条误判「放不下」而退化口袋。改量子元素（hud-left/hud-right）的最大底边 */
+function hudBottom(){
+  const hud = document.getElementById("hud"); if(!hud) return 56;
+  let b = 0;
+  for(const el of hud.children){ const r = el.getBoundingClientRect(); if(r.bottom > b) b = r.bottom; }
+  return b || hud.getBoundingClientRect().bottom;
+}
+/* HUD 中与给定横向区间相交的按钮组的内容下沿。扁横条锚在「房间」右缘，与窗口右缘的 HUD 按钮
+   通常横向不相交，此时返回 0 —— 不必把卡片整体压到 HUD 下沿（否则矮房间放不进扁条） */
+function hudBottomUnder(xL, xR){
+  const hud = document.getElementById("hud"); if(!hud) return 0;
+  let b = 0;
+  for(const el of hud.children){
+    const r = el.getBoundingClientRect();
+    if(r.right > xL && r.left < xR && r.bottom > b) b = r.bottom;
+  }
+  return b;
+}
+/* 状态牌定位：桌面=右上角扁横条（放不下退化左壁口袋）；竖屏窄屏=右侧 slim。
+   避开 HUD / 花环 / 画框 / 勋章柜 / 罐子 / 盆栽 / 精灵，并随画布裁切自适应；窗口变化时重算 */
 function positionSpriteCard(){
   const card = document.getElementById("sprite-card"); if(!card) return;
   /* 手机竖屏：状态牌固定右侧、顶部对齐「花环下沿」（原来贴在 HUD 旁会挡住花环两端），
      不压罐子/地面/打卡台；左栏同步由 layoutMobilePanels 钉在同一高度 */
   if(isMobilePortrait()){
-    card.classList.remove("compact"); card.classList.add("slim");   /* 窄屏瘦身：机会数并进按钮文案 */
+    card.classList.remove("compact", "flat"); card.classList.add("slim");   /* 窄屏瘦身：机会数并进按钮文案 */
     updateSpriteCard();
     const r = stage.getBoundingClientRect();
     if(!r.width || !r.height){ card.style.left=""; card.style.top=""; card.style.right=""; card.style.bottom=""; return; }
     const sx = r.width / W, sy = r.height / visH();
     const ch = card.offsetHeight || 100, cw = card.offsetWidth || 84;
-    const hud = document.getElementById("hud");
-    const hudBot = hud ? hud.getBoundingClientRect().bottom : 50;
+    const hudBot = hudBottom();
     const dock = document.getElementById("dock");
     const dockTop = dock ? dock.getBoundingClientRect().top : (window.innerHeight - 80);
     let left = Math.max(6, window.innerWidth - cw - 6);        /* 贴右边缘 */
@@ -2759,38 +2795,41 @@ function positionSpriteCard(){
     card.style.top  = top + "px";  card.style.bottom = "auto";
     return;
   }
+  /* ============ 桌面布局 ============ */
   const r = stage.getBoundingClientRect();
   if(!r.width || !r.height) return;
-  const sx = r.width / W, sy = r.height / visH();            /* 逻辑 → 屏幕缩放 */
-  const visL = Math.max(0, -r.left / sx), visR = Math.min(W, (window.innerWidth  - r.left) / sx);
-  const visT = Math.max(0, -r.top  / sy), visB = Math.min(visH(), (window.innerHeight - r.top ) / sy);
+  const sx = r.width / W, sy = r.height / visH();
+  const visL = Math.max(0, -r.left / sx), visR = Math.min(W, (window.innerWidth - r.left) / sx);
+  const visT = Math.max(0, -r.top  / sy), visB = Math.min(visH(), (window.innerHeight - r.top) / sy);
+  /* ① 首选：右上角扁横条（flat）——右缘贴房间右缘 -12（超宽窗也贴着房间，不飘到画布外奶油边）。
+     垂直约束两条：花环下沿（逻辑 ≈37）；以及仅当卡片横向覆盖到 HUD 按钮组时才避 HUD；
+     再保证不压右上画框（逻辑 y92 起）与荣誉柜（逻辑 x294–506），否则退化左壁口袋 */
   card.classList.remove("compact", "slim");
-  let lx, ly;
-  const cw0 = card.offsetWidth / sx;                  /* 标准档逻辑宽 */
-  if(606 + cw0 <= visR - 8){
-    /* 宽屏：最右侧墙面（画框下方、地面摆件上方；精灵地面活动在 y≈490，不冲突） */
-    lx = visR - cw0 - 8;
-    ly = 205;
-    ly = Math.min(ly, 440 - card.offsetHeight / sy);  /* 别压到右侧摆件顶（逻辑 452） */
-    ly = Math.max(ly, visT + 70 / sy);                /* 别钻进 HUD */
-  } else if(visL <= 130 && visR > 330){
-    /* 降级：左壁口袋（逻辑 x 124–300：左栏右缘外、罐子左缘内；y 206 起：小窗下） */
-    lx = Math.max(visL + 8, 124);
-    ly = 206;
-    let cw = card.offsetWidth;
-    if(lx + cw / sx > 298){ card.classList.add("compact"); cw = card.offsetWidth; }  /* 口袋窄 → 紧凑档 */
-    if(lx + cw / sx > 298){ card.classList.remove("compact"); card.classList.add("slim"); }  /* 还挤 → 迷你档 */
-    ly = Math.min(ly, 426 - card.offsetHeight / sy);        /* 别压到盆栽顶（逻辑 430） */
-    ly = Math.max(ly, visT + 70 / sy);                      /* 别钻进 HUD */
-  } else {
-    /* 竖屏 / 窄屏：可见区顶部左侧（罐口精灵之上、HUD 之下） */
-    card.classList.add("slim");
-    lx = visL + 12;
-    ly = visT + 104 / sy;
+  card.classList.add("flat");
+  updateSpriteCard();
+  const cwF = card.offsetWidth || 260, chF = card.offsetHeight || 38;
+  const rightPx = Math.max(8, window.innerWidth - (r.left + r.width) + 12);
+  const cardLx = window.innerWidth - rightPx - cwF, cardRx = window.innerWidth - rightPx;
+  const topMin = Math.max(r.top + 37 * sy, hudBottomUnder(cardLx, cardRx) + 6);
+  const leftLogic = (cardLx - r.left) / sx;
+  if(topMin + chF <= r.top + 92 * sy - 3 && leftLogic >= 508){
+    card.style.left = "auto"; card.style.bottom = "auto";
+    card.style.right = rightPx + "px";
+    card.style.top = topMin + "px";
+    return;
   }
+  /* ② 退化：左壁口袋（窗户下、荣誉柜左、罐子右缘内、盆栽上）——compact，过窄再 slim */
+  card.classList.remove("flat");
+  card.classList.add("compact");
+  updateSpriteCard();
+  let lx = Math.max(visL + 8, 124), ly = 206;
+  let cw = card.offsetWidth;
+  if(lx + cw / sx > 298){ card.classList.remove("compact"); card.classList.add("slim"); cw = card.offsetWidth; }
+  ly = Math.min(ly, 426 - card.offsetHeight / sy);             /* 别压到盆栽顶（逻辑 430） */
+  ly = Math.max(ly, visT + 70 / sy);                           /* 别钻进 HUD */
   card.style.left = (r.left + lx * sx) + "px";
   card.style.top  = (r.top  + ly * sy) + "px";
-  updateSpriteCard();                                       /* 档位可能变了，顺手刷新按钮文案 */
+  card.style.right = "auto"; card.style.bottom = "auto";
 }
 /* 荣誉柜目标名牌：跟随柜顶（DOM 文字，中文不走 canvas）；文字变化才重写，避免每帧布局 */
 let __plateText = "";
