@@ -946,7 +946,7 @@ function makingSprite(){ return isMobilePortrait() ? MAKING_SPRITE_MOBILE : MAKI
    手机端：盆栽被裁出画面，禁区只保留「罐前 + 右侧小蛋糕」；封存的礼品罐由 giftSlots 动态叠加 */
 const PROP_BOXES_DESKTOP = [
   { x:134, y:456, w:32,  h:44 },   // 盆栽（盆+叶冠，x150 踩地板顶线）
-  { x:560, y:474, w:40,  h:26 },   // 主题地面摆件（x580 小蛋糕，踩地板顶线）
+  { x:565, y:474, w:40,  h:26 },   // 主题地面摆件（x585 小蛋糕，踩地板顶线）
   { x:292, y:430, w:216, h:70 },   // 罐子正前方（防挡罐主角）
 ];
 const PROP_BOXES_MOBILE = [
@@ -1064,7 +1064,7 @@ function drawRoom(c, theme, night){
   /* 画框仅桌面绘制（窄屏右状态卡会压住它）；窗户桌面保持左上原味，窄屏右移避开左目标栏，
      仍保留墙上装饰；右状态卡压画框故窄屏隐藏画框，墙上装饰由花环 / 星 / 挂饰 / 礼品罐补足 */
   drawWindow(c, night);
-  if(!isMobilePortrait()) drawFramePicture(c, theme);
+  drawFramePicture(c, theme, night);                /* 桌面：右上角画框；手机：右墙空位补一颗（见函数内分支） */
   /* 盆栽：桌面放罐左地面(x150)；手机端放到「罐子左侧地面空地」(x258)——罐左缘≈302、左面板只到顶部，
      底部地面开阔，盆栽落在罐左、地板线上，清晰可见不压面板也不被罐子遮挡 */
   drawFloorPlant(c, isMobilePortrait() ? 258 : 150, FLOOR_Y, isMobilePortrait() ? 0.85 : 1);
@@ -1111,10 +1111,9 @@ const DECOR_CHARMS = [
   {x:180, phase:0.0, type:"heart", col:"#FFA9C9"},
   {x:620, phase:1.7, type:"star",  col:"#FFD66B"},
 ];
-const GARLAND = []; for(let x=110; x<=710; x+=75) GARLAND.push(x);
 function drawDecorOverlay(c, night, t){
   const oy = isMobilePortrait() ? 46 : 0;     /* 窄屏整体下移，避开顶部 HUD 并填充上方空白 */
-  drawGarland(c, t, oy);                       /* 顶部淡紫小花环 */
+  drawGarland(c, t);                           /* 顶部淡紫小花环（铺满可见区、两端钉墙、手机端压到 HUD 下） */
   /* 漂浮闪烁小星星（避开左栏与罐子区域），含淡紫色；手机端跳过跑出可视区（x<205 或 x>615）的星 */
   for(let i=0;i<DECOR_STARS.length;i++){
     const x=DECOR_STARS[i][0], y=DECOR_STARS[i][1]+oy;
@@ -1286,19 +1285,29 @@ function drawMedals(c, night){
     }
   });
 }
-/* 花环弧线：以画面中心 410 为最低点、两端齐平的对称轻微下垂（不再歪斜） */
-const garlandY = x => { const f = (x - 410) / 300; return 12 + 16 * (1 - f*f); };
-/* 顶部淡紫小花环：一串小五瓣花，沿对称下垂弧均匀坐着（绳穿花心，随风轻晃） */
-function drawGarland(c, t, oy){
-  oy = oy||0;
-  const Y = x => garlandY(x) + oy + Math.round(Math.sin(t*1.2 + x*0.02)*1.2);  /* 极轻微起伏，不破坏对称 */
-  /* 主绳：连接各节点（同在一条对称抛物线上 → 平滑下垂弧） */
-  for(let i=0;i<GARLAND.length-1;i++){
-    pLine(c, GARLAND[i], Y(GARLAND[i]), GARLAND[i+1], Y(GARLAND[i+1]), "#B79AD0", 2);
+/* 顶部治愈小花环：一串小五瓣花，沿对称下垂弧均匀坐着（绳穿花心，随风轻晃）。
+   横向铺满整条「可见区」并两端钉在墙上，手机端压到 HUD 之下 —— 否则两端被通栏顶部栏 / 屏外吃掉，
+   看起来像「线没拉满、两端悬空」。所有水平范围用 visL / visR，绝不写死。 */
+function drawGarland(c, t){
+  const x0 = visL() + 6, x1 = visR() - 6;
+  const baseY = isMobilePortrait() ? 82 : 14;          /* 手机端压到 HUD 之下，避免被通栏顶部栏吃掉 */
+  const mid = (x0 + x1) / 2, half = (x1 - x0) / 2;
+  const Y = x => { const f = (x - mid) / half; return baseY + 16 * (1 - f*f)
+                   + Math.round(Math.sin(t*1.2 + x*0.02) * 1.2); };   /* 极轻微起伏，不破坏对称 */
+  const step = Math.max(48, Math.round((x1 - x0) / 11));
+  const nodes = []; for(let x = x0; x <= x1 + 1; x += step) nodes.push(x);
+  /* 主绳：两端钉在墙上、中间沿对称抛物下垂 → 完整一条、不会断 */
+  for(let i = 0; i < nodes.length - 1; i++){
+    pLine(c, nodes[i], Y(nodes[i]), nodes[i+1], Y(nodes[i+1]), "#B79AD0", 2);
+  }
+  /* 两端墙钉（淡紫圆点 + 暖黄花心），让线"挂"在墙上而非悬空 */
+  for(const ex of [x0, x1]){
+    const ey = Y(ex);
+    pCircle(c, ex, ey, 4, "#C9A8E8"); pCircle(c, ex, ey, 2, "#FFF3C9");
   }
   /* 花朵：正中坐在绳上（绳穿花心），随风轻轻晃 */
-  for(let i=0;i<GARLAND.length;i++){
-    const x=GARLAND[i], y=Y(x);
+  for(let i = 0; i < nodes.length; i++){
+    const x = nodes[i], y = Y(x);
     P(c, x, y, 3, 3, "#C3AEF2");
     P(c, x-3, y, 2, 2, "#C3AEF2"); P(c, x+3, y, 2, 2, "#C3AEF2");
     P(c, x, y-3, 2, 2, "#C3AEF2"); P(c, x, y+3, 2, 2, "#C3AEF2");
@@ -1317,14 +1326,20 @@ function drawCharm(c, x, topY, C, night){
     pStar(c, x, cy, 13, C.col); pStar(c, x, cy, 6, "#FFF3C9");
   }
 }
-/* 墙上小画框：初版 demo 右上角那种简单可爱图案（主题色小星 + 小爱心） */
-function drawFramePicture(c, theme){
-  const fx=596, fy=92, fw=112, fh=86;
-  pRoundRect(c, fx, fy, fw, fh, 6, "#FFF6E8");
-  pRoundRectStroke(c, fx, fy, fw, fh, 6, "#96613C", 5);
-  pStar(c, fx+fw/2, fy+fh/2-8, 16, theme.color);
-  pStar(c, fx+fw/2, fy+fh/2-8, 8, "#FFF3C9");
-  pHeart(c, fx+fw/2, fy+fh/2+22, 9, theme.dark);
+/* 墙上小画框：初版 demo 那种简单可爱图案（主题色小星 + 小爱心）。
+   桌面：右上角原味画框；手机：右侧空墙面补一颗（避开通栏状态卡 / 顶部挂饰 / 礼品罐列），
+   把原本空着的右墙填满一点。底色用浅蓝面板 + 木色厚框，在奶油墙上清晰可辨（不再奶油叠奶油）。 */
+function drawFramePicture(c, theme, night){
+  let fx, fy, fw, fh;
+  if(isMobilePortrait()){ fx=600; fy=206; fw=92; fh=74; }   /* 手机：右墙空位（状态卡之下、礼品罐列之右） */
+  else { fx=596; fy=92; fw=112; fh=86; }                     /* 桌面：右上角原味 */
+  const bg = night ? "#4A4468" : "#EAF3FB";                  /* 浅蓝面板在奶油墙上清晰可辨；夜晚用暗紫面板 */
+  const bd = night ? "#8A7FB4" : "#96613C";
+  pRoundRect(c, fx, fy, fw, fh, 6, bg);
+  pRoundRectStroke(c, fx, fy, fw, fh, 6, bd, 5);
+  pStar(c, fx+fw/2, fy+fh/2-7, isMobilePortrait()?12:16, theme.color);
+  pStar(c, fx+fw/2, fy+fh/2-7, isMobilePortrait()?6:8, "#FFF3C9");
+  pHeart(c, fx+fw/2, fy+fh/2+(isMobilePortrait()?18:22), isMobilePortrait()?7:9, theme.dark);
 }
 /* 地板绿植：初版 demo 那种小盆栽（木盆 + 两簇绿叶）；scale 用于手机端整体缩小 */
 function drawFloorPlant(c, x, fy, scale){
@@ -1343,7 +1358,10 @@ function drawThemeDecor(c, theme){
      桌面端放罐右地面(x580)；手机端放到「罐子右侧地面空地」(x518)——罐右缘≈498、右面板只到顶部，
      底部地面开阔，摆件落在罐右、地板线上，清晰可见不被遮挡；整体缩小 0.82 适应窄屏 */
   const mobile = isMobilePortrait();
-  const x = mobile ? 522 : 580, fy = 500;
+  /* 主题摆件：一律踩在「地板顶线」上（地板上面，不沉进棕色木纹）；
+     桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x610)——罐右缘≈498，
+     与罐子拉开 ~90px 安全间距、彻底离开罐体，不再被罐身盖住；整体缩小 0.82 适应窄屏 */
+  const x = mobile ? 610 : 585, fy = 500;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
