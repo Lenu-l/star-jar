@@ -896,11 +896,13 @@ function layoutScene(){
   const botRes = Math.max(0, vh - dockTop) + 4;
   const availW = Math.max(120, vw - 12);
   const availH = Math.max(120, vh - topRes - botRes);
-  const aspect = visW() / visH();              /* 手机端 ≈ 608/570，近正方形，竖向更饱满 */
-  let sw = availW, sh = sw / aspect;
-  if(sh > availH){ sh = availH; sw = sh * aspect; }
+  const aspect = visW() / visH();              /* 手机端 ≈ 608/570，近正方形 */
+  /* 竖向填满 HUD 下沿到打卡台之间的全部高度 → 罐子更大、地板线压到打卡台上方，消除底部空白；
+     宽度随之放大并居中，两侧溢出由 overflow 裁切（罐子居中不受影响，地面装饰落在面板高度之外仍可见） */
+  let sh = availH, sw = sh * aspect;
+  if(sw < availW){ sw = availW; sh = sw / aspect; }
   const left = Math.round((vw - sw) / 2);
-  const top  = Math.round(topRes + (availH - sh) / 2);
+  const top  = Math.round(topRes);
   [stage, sl].forEach(el=>{ if(!el) return;
     el.style.transform = "none";
     el.style.left = left + "px";
