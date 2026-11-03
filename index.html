@@ -1944,8 +1944,11 @@ function drawSprite(c){
   const k = CUR.K;
   const destW = Math.round(sprL() * k);
   const destH = Math.round(sprL() * (SPR_BB.h/SPR_BB.w) * k);
-  const bx = Math.round((sxL - sprL()/2) * k);
-  const by = Math.round(syL * k) - destH;
+  /* 物理坐标落点也要带上 CUR.VX/VY（移动端横向裁剪 visL 偏移），否则身体会与
+     用逻辑坐标绘制、内部已加 VX 的脸部表情错位 —— 出现「表情脱离身体」的假象。
+     桌面端 VX/VY 均为 0，行为与旧版一致。 */
+  const bx = Math.round((sxL - sprL()/2) * k + CUR.VX);
+  const by = Math.round(syL * k) - destH + CUR.VY;
   /* 夜晚暖光晕：奶油身体在暗色房间里（尤其贴着明亮罐口时）容易融掉下半身剪影，
      用与夜晚挂饰同款的同心圆低透明暖光晕托住整个轮廓（画在身体后面，原型分毫不动）。
      注意 pCircle/P 系列原语接收「逻辑坐标」，这里必须用 sxL/syL，不能用已乘 K 的 bx/by/destW */
