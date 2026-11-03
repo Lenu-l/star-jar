@@ -325,9 +325,8 @@ input{ font-family:inherit; }
      · 宽度：罐子（逻辑宽 196）必须完整落在左右两块面板（各 84 宽）之间并留间隙 → 在 (100vw-208px) 内放下 196；
      · 高度：只绘制到逻辑 y=570（画布底部裁掉 30 单位空地）→ 罐子和地板整体下移、底部不再空一大截；
        场景底边贴在打卡台上沿，顶边不低于 HUD 下沿（150px = HUD 约 64 + 打卡区约 86）。 */
-  #app{ --sw: min( calc((100vw - 208px) * 800 / 196),
-                   calc((100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 800 / 570),
-                   calc(100vw * 1.15) );
+  #app{ --sw: min( calc((100vh - 150px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 800 / 570),
+                   calc((100vw - 160px) * 800 / 196) );
         --sh: calc(var(--sw) * 570 / 800); }
   #stage, #sprite-layer{
     width: var(--sw); height: var(--sh);
@@ -349,8 +348,8 @@ input{ font-family:inherit; }
   /* 目标列表：竖排固定左侧。顶部由 JS（layoutMobilePanels）钉在「花环下沿」，
      避开花环/荣誉柜、不压场景；这里给 CSS 兜底值 */
   #jar-rail{ left:6px; right:auto; top:calc(112px + env(safe-area-inset-top)); bottom:auto;
-    width:84px; flex-direction:column; align-items:stretch; gap:6px;
-    max-height:calc(100vh - 112px - 104px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    width:72px; flex-direction:column; align-items:stretch; gap:6px;
+    max-height:calc(100vh - 112px - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y:auto; overflow-x:hidden; padding:0 0 2px; z-index:18; }
   #rail-list{ flex-direction:column; flex:0 0 auto; gap:6px; overflow:visible; }
   .jar-card{ width:auto; flex:none; padding:6px; }
@@ -360,7 +359,7 @@ input{ font-family:inherit; }
   .rail-add{ width:100%; height:34px; font-size:20px; flex:none; }
   /* 精灵状态牌：竖排固定在右侧、与左栏同顶（花环下沿那段墙），不压罐子/地面/打卡台 */
   #sprite-card{ position:fixed; left:auto; right:6px; top:calc(112px + env(safe-area-inset-top)); bottom:auto;
-    width:84px; max-width:84px; }
+    width:72px; max-width:72px; }
   #sprite-card .sc-rename{ display:none; }
   #sprite-card .sc-head{ gap:4px; }
   #sprite-card .sc-name{ font-size:13px; max-width:100%; }
@@ -1012,7 +1011,7 @@ function drawRoom(c, theme, night){
   if(!isMobilePortrait()) drawFramePicture(c, theme);
   /* 盆栽：桌面放罐左地面(x150)；手机端左目标栏只挡到逻辑≈213，故放到「罐子左侧空地」(x258)，
      明显落在开阔地面、不压左栏也不贴罐身 */
-  drawFloorPlant(c, isMobilePortrait() ? 258 : 150, FLOOR_Y);
+  drawFloorPlant(c, isMobilePortrait() ? 320 : 150, FLOOR_Y);
   drawThemeDecor(c, theme, night);
   if(night){
     /* 夜色氛围：整屋压一层暖蓝暗调（在罐子之前画，罐子仍明亮治愈） */
@@ -1071,6 +1070,19 @@ function drawDecorOverlay(c, night, t){
   /* 悬挂小星星 / 小爱心（轻微摇摆 + 暖光晕；夜晚更亮） */
   for(const C of DECOR_CHARMS){
     drawCharm(c, C.x + Math.sin(t*0.9 + C.phase)*4, 18+oy, C, night);
+  }
+  /* 手机端：在罐子正上方墙面补几颗大星 + 一颗小爱心，填充「荣誉柜下方→罐子顶」之间的奶油空白，
+     不动罐子位置（下方仍贴打卡台），让上半墙面视觉更饱满 */
+  if(isMobilePortrait()){
+    const extra = [[356,132],[418,150],[388,176],[405,190]];
+    for(let k=0;k<extra.length;k++){
+      const fx=extra[k][0], fy=extra[k][1]+oy, col=DECOR_STAR_COLS[k%DECOR_STAR_COLS.length];
+      P(c, fx, fy, 4, 4, col);
+      P(c, fx-6, fy, 1, 4, col); P(c, fx+6, fy, 1, 4, col);
+      P(c, fx, fy-6, 4, 1, col); P(c, fx, fy+6, 4, 1, col);
+    }
+    const hx=372, hy=190+oy, hc="#FFA9C9";          /* 小爱心，贴罐子顶上方 */
+    P(c, hx-4, hy, 4, 3, hc); P(c, hx+1, hy, 4, 3, hc); P(c, hx-3, hy+3, 6, 3, hc); P(c, hx-1, hy+6, 2, 2, hc);
   }
   if(night){
     /* 夜萤火虫：几只缓缓飘 */
