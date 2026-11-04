@@ -352,14 +352,18 @@ input{ font-family:inherit; }
   .rail-add{ width:100%; height:34px; font-size:20px; flex:none; }
   /* 精灵状态牌：右上角小横条胶囊（名字 + 心情表情 + 喂食按钮一行排开，绝不换行），
      紧贴 HUD 下沿稍稍下移，不压荣誉柜 / 打卡台 / 花环（它们都在更下方）；JS 再写内联 left/top 兜底 */
-  /* 精灵状态牌：小圆角竖向框（名字 + 心情 + 喂食按钮），定位到顶部右侧、奖章墙（顶柜）旁边稍下，由 JS 兜底 right/top */
-  #sprite-card{ position:absolute; right:6px; top:calc(64px + env(safe-area-inset-top)); width:96px; border-radius:16px; padding:8px 10px; }
+  #sprite-card{ position:fixed; left:auto; right:6px; top:calc(64px + env(safe-area-inset-top)); bottom:auto;
+    width:auto; max-width:calc(100vw - 12px - 84px);
+    display:flex; flex-direction:row; align-items:center; gap:6px;
+    padding:5px 10px; border-radius:16px; white-space:nowrap; }
   #sprite-card .sc-rename{ display:none; }
+  #sprite-card .sc-head{ gap:4px; }
   #sprite-card .sc-name{ font-size:13px; }
-  #sprite-card .sc-mood{ margin-top:6px; font-size:12px; padding:4px 7px; }
-  #sprite-card .sc-mood-text{ display:inline; }   /* 小框内恢复心情文字 */
+  #sprite-card .sc-mood{ margin:0; font-size:12px; padding:3px 7px; }
+  #sprite-card .sc-mood-text{ display:none; }   /* 手机端只留心情表情，省宽度防换行 */
   #sprite-card .sc-feed{ display:none; }
-  #sprite-card .sc-feed-btn{ margin-top:7px; width:100%; height:30px; padding:0; font-size:12px; line-height:1; }
+  #sprite-card .slim .sc-feed-btn{ margin:0; }
+  #sprite-card .sc-feed-btn{ margin:0; width:auto; height:30px; padding:0 12px; font-size:12px; line-height:1; }
   #dock{ bottom:max(12px, env(safe-area-inset-bottom)); padding:5px 8px; }
   #check-btn{ width:56px; height:56px; margin:0 2px; }
   .step-btn{ width:54px; height:54px; }
@@ -899,10 +903,6 @@ function layoutScene(){
      宽度随之放大并居中，两侧溢出由 overflow 裁切（罐子居中不受影响，地面装饰落在面板高度之外仍可见） */
   let sh = availH, sw = sh * aspect;
   if(sw < availW){ sw = availW; sh = sw / aspect; }
-  /* 限制横向放大：手机竖屏场景近正方，若一味填满高度会横向溢出、把右侧装饰（画框/星星）裁到屏外。
-     限制 sw ≤ availW*1.25，使逻辑可见区≈[140,660]，墙上右侧装饰完整回到屏内；上下留白由奶油墙色（body bg）连续填充，不突兀 */
-  const MAX_SW = availW * 1.25;
-  if(sw > MAX_SW){ sw = MAX_SW; sh = sw / aspect; }
   const left = Math.round((vw - sw) / 2);
   const top  = Math.round(topRes);
   [stage, sl].forEach(el=>{ if(!el) return;
@@ -1132,19 +1132,6 @@ function drawDecorOverlay(c, night, t){
     if(isMobilePortrait()){ cx = (C.type==="heart") ? 268 : 560; ctop = 150+oy; }
     drawCharm(c, cx + Math.sin(t*0.9 + C.phase)*4, ctop, C, night);
   }
-  /* 手机端：在罐子正上方墙面补几颗大星 + 一颗小爱心，填充「荣誉柜下方→罐子顶」之间的奶油空白，
-     不动罐子位置（下方仍贴打卡台），让上半墙面视觉更饱满 */
-  if(isMobilePortrait()){
-    const extra = [[356,132],[418,150],[388,176],[405,190]];
-    for(let k=0;k<extra.length;k++){
-      const fx=extra[k][0], fy=extra[k][1]+oy, col=DECOR_STAR_COLS[k%DECOR_STAR_COLS.length];
-      P(c, fx, fy, 4, 4, col);
-      P(c, fx-6, fy, 1, 4, col); P(c, fx+6, fy, 1, 4, col);
-      P(c, fx, fy-6, 4, 1, col); P(c, fx, fy+6, 4, 1, col);
-    }
-    const hx=372, hy=190+oy, hc="#FFA9C9";          /* 小爱心，贴罐子顶上方 */
-    P(c, hx-4, hy, 4, 3, hc); P(c, hx+1, hy, 4, 3, hc); P(c, hx-3, hy+3, 6, 3, hc); P(c, hx-1, hy+6, 2, 2, hc);
-  }
   if(night){
     /* 夜萤火虫：几只缓缓飘 */
     for(let i=0;i<5;i++){
@@ -1367,7 +1354,7 @@ function drawThemeDecor(c, theme){
      桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x515)——罐右缘≈498，
      紧贴罐右、仍在手机可见区内（逻辑 x≈515 < 右侧裁切边≈558，不被裁掉）；
      整体缩小 0.82 适应窄屏 */
-  const x = mobile ? 515 : 585, fy = 500;
+  const x = mobile ? 528 : 585, fy = 500;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -2891,12 +2878,12 @@ function positionSpriteCard(){
   /* 手机竖屏：状态牌固定右侧、顶部对齐「花环下沿」（原来贴在 HUD 旁会挡住花环两端），
      不压罐子/地面/打卡台；左栏同步由 layoutMobilePanels 钉在同一高度 */
   if(isMobilePortrait()){
-    card.classList.remove("compact", "flat", "slim");   /* 手机端样式交给媒体查询（小圆角框），不残留扁/窄类 */
+    card.classList.remove("compact", "flat", "slim");   /* 手机端样式完全交给媒体查询（横向胶囊），避免 .slim{width:118px} 把卡片压成竖条 */
     updateSpriteCard();
-    /* 小圆角框：固定在顶部右侧、奖章墙（顶柜）旁边稍下（HUD 下沿），由 CSS 兜底定位；画框/星星已避让，互不遮挡 */
-    card.style.left = "auto"; card.style.bottom = "auto";
-    card.style.right = "6px";
-    card.style.top = "calc(64px + env(safe-area-inset-top))";
+    const hudBot = hudBottom();
+    /* 右上角、紧贴 HUD 下沿（稍稍下移），绝不压住荣誉柜 / 打卡台 / 花环（它们都在更下方） */
+    card.style.right = "6px"; card.style.left = "auto";
+    card.style.top  = (hudBot + 6) + "px";  card.style.bottom = "auto";
     return;
   }
   /* ============ 桌面布局 ============ */
@@ -3164,7 +3151,7 @@ window.addEventListener("error", e=>{
    旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
    抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
    同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
-const SJ_BUILD = "2026-11-04.5";
+const SJ_BUILD = "2026-11-04.7";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
