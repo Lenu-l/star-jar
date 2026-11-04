@@ -350,20 +350,14 @@ input{ font-family:inherit; }
   .jar-card .jc-name{ font-size:10px; }
   .jar-card .jc-meta{ font-size:9px; }
   .rail-add{ width:100%; height:34px; font-size:20px; flex:none; }
-  /* 精灵状态牌：右上角小横条胶囊（名字 + 心情表情 + 喂食按钮一行排开，绝不换行），
-     紧贴 HUD 下沿稍稍下移，不压荣誉柜 / 打卡台 / 花环（它们都在更下方）；JS 再写内联 left/top 兜底 */
-  #sprite-card{ position:fixed; left:auto; right:6px; top:calc(64px + env(safe-area-inset-top)); bottom:auto;
-    width:auto; max-width:calc(100vw - 12px - 84px);
-    display:flex; flex-direction:row; align-items:center; gap:6px;
-    padding:5px 10px; border-radius:16px; white-space:nowrap; }
+  /* 精灵状态牌：小圆角卡片（名字 + 心情 + 喂食按钮竖排），定位在奖章墙右侧稍下，由 JS 写内联 right/top 兜底 */
+  #sprite-card{ position:absolute; right:6px; top:calc(64px + env(safe-area-inset-top)); width:96px; border-radius:16px; padding:8px 10px; }
   #sprite-card .sc-rename{ display:none; }
-  #sprite-card .sc-head{ gap:4px; }
   #sprite-card .sc-name{ font-size:13px; }
-  #sprite-card .sc-mood{ margin:0; font-size:12px; padding:3px 7px; }
-  #sprite-card .sc-mood-text{ display:none; }   /* 手机端只留心情表情，省宽度防换行 */
+  #sprite-card .sc-mood{ margin-top:6px; font-size:12px; padding:4px 7px; }
+  #sprite-card .sc-mood-text{ display:inline; }   /* 小框内恢复心情文字 */
   #sprite-card .sc-feed{ display:none; }
-  #sprite-card .slim .sc-feed-btn{ margin:0; }
-  #sprite-card .sc-feed-btn{ margin:0; width:auto; height:30px; padding:0 12px; font-size:12px; line-height:1; }
+  #sprite-card .sc-feed-btn{ margin-top:7px; width:100%; height:30px; padding:0; font-size:12px; line-height:1; }
   #dock{ bottom:max(12px, env(safe-area-inset-bottom)); padding:5px 8px; }
   #check-btn{ width:56px; height:56px; margin:0 2px; }
   .step-btn{ width:54px; height:54px; }
@@ -899,12 +893,14 @@ function layoutScene(){
   const availW = Math.max(120, vw - 12);
   const availH = Math.max(120, vh - topRes - botRes);
   const aspect = visW() / visH();              /* 手机端 ≈ 608/570，近正方形 */
-  /* 竖向填满 HUD 下沿到打卡台之间的全部高度 → 罐子更大、地板线压到打卡台上方，消除底部空白；
-     宽度随之放大并居中，两侧溢出由 overflow 裁切（罐子居中不受影响，地面装饰落在面板高度之外仍可见） */
+  /* 竖向填满 HUD 下沿到打卡台之间的高度；宽度随之放大，但限制横向上限（MAX_SW）让地板装饰完整进屏。
+     舞台贴底对齐（地板接打卡台），空白只留顶部且为墙色，消除底部空洞；decor 在 render 里画在罐子之前→之后，确保不被罐身遮挡 */
   let sh = availH, sw = sh * aspect;
+  const MAX_SW = availW * 2.3;                  /* 放宽横向上限：可见逻辑宽≈visW/2.3≈264，盆栽/蛋糕完整进屏，空白压到最小 */
+  if(sw > MAX_SW){ sw = MAX_SW; sh = sw / aspect; }
   if(sw < availW){ sw = availW; sh = sw / aspect; }
   const left = Math.round((vw - sw) / 2);
-  const top  = Math.round(topRes);
+  const top  = Math.round(topRes + Math.max(0, availH - sh));   /* 贴底对齐：底部地板接打卡台，空白只留顶部（墙色） */
   [stage, sl].forEach(el=>{ if(!el) return;
     el.style.transform = "none";
     el.style.left = left + "px";
@@ -1067,10 +1063,8 @@ function drawRoom(c, theme, night){
      仍保留墙上装饰；右状态卡压画框故窄屏隐藏画框，墙上装饰由花环 / 星 / 挂饰 / 礼品罐补足 */
   drawWindow(c, night);
   drawFramePicture(c, theme, night);                /* 桌面：右上角画框；手机：右墙空位补一颗（见函数内分支） */
-  /* 盆栽：桌面放罐左地面(x150)；手机端放到「罐子左侧地面空地」(x258)——罐左缘≈302、左面板只到顶部，
-     底部地面开阔，盆栽落在罐左、地板线上，清晰可见不压面板也不被罐子遮挡 */
-  drawFloorPlant(c, isMobilePortrait() ? 275 : 150, FLOOR_Y, isMobilePortrait() ? 0.85 : 1);
-  drawThemeDecor(c, theme, night);
+  /* 地板装饰（盆栽 / 主题摆件）改在 render() 里「罐子之后」绘制，确保叠在罐子前面、永不被罐身遮挡；
+     位置见 render() 中的 drawFloorPlant / drawThemeDecor 调用（手机端贴罐子左右两侧、踩地板线） */
   if(night){
     /* 夜色氛围：整屋压一层暖蓝暗调（在罐子之前画，罐子仍明亮治愈） */
     P(c, 0, 0, W, H, "rgba(28,26,64,.34)");
@@ -1354,7 +1348,7 @@ function drawThemeDecor(c, theme){
      桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x515)——罐右缘≈498，
      紧贴罐右、仍在手机可见区内（逻辑 x≈515 < 右侧裁切边≈558，不被裁掉）；
      整体缩小 0.82 适应窄屏 */
-  const x = mobile ? 528 : 585, fy = 500;
+  const x = mobile ? 505 : 585, fy = 500;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -2241,6 +2235,9 @@ function render(){
   if(sealAnim) drawSealAnim(ctx, performance.now()/1000);  /* 封存演出期间主罐让位给动画 */
   else if(packAnim) drawJar(ctx, jar, jarShake);           /* 压缩演出每帧重画（缓存会跟不上） */
   else drawJarCached(ctx, jar, jarShake);
+  /* 地板装饰：画在罐子之后 → 叠在罐子前面，永不被罐身遮挡（手机端贴罐子左右两侧、踩地板线） */
+  drawFloorPlant(ctx, isMobilePortrait() ? 295 : 150, 500, isMobilePortrait() ? 0.85 : 1);
+  drawThemeDecor(ctx, THEME_MAP[jar.themeId] || THEMES[0]);
   drawGifts(ctx, jar, performance.now()/1000);             /* 大罐两侧地面上已封存的礼品罐 */
   /* 入罐暖光：罐身染暖黄（画在罐子之后，才染得上） */
   if(jarGlow>0){
@@ -2878,12 +2875,15 @@ function positionSpriteCard(){
   /* 手机竖屏：状态牌固定右侧、顶部对齐「花环下沿」（原来贴在 HUD 旁会挡住花环两端），
      不压罐子/地面/打卡台；左栏同步由 layoutMobilePanels 钉在同一高度 */
   if(isMobilePortrait()){
-    card.classList.remove("compact", "flat", "slim");   /* 手机端样式完全交给媒体查询（横向胶囊），避免 .slim{width:118px} 把卡片压成竖条 */
+    card.classList.remove("compact", "flat", "slim");   /* 手机端用小圆角竖卡，不残留扁/窄类 */
     updateSpriteCard();
-    const hudBot = hudBottom();
-    /* 右上角、紧贴 HUD 下沿（稍稍下移），绝不压住荣誉柜 / 打卡台 / 花环（它们都在更下方） */
-    card.style.right = "6px"; card.style.left = "auto";
-    card.style.top  = (hudBot + 6) + "px";  card.style.bottom = "auto";
+    const r = stage.getBoundingClientRect(); if(!r.width || !r.height) return;
+    const sx = r.width / visW(), sy = r.height / visH();
+    /* 奖章墙（荣誉柜）底部屏幕 y，卡片贴在它右侧稍下（不压柜体，也不压罐子/打卡台） */
+    const cabBottom = r.top + (MEDAL_CAB.y + MEDAL_CAB.h) * sy;
+    card.style.left = "auto"; card.style.bottom = "auto";
+    card.style.right = "6px";
+    card.style.top = (cabBottom + 6) + "px";
     return;
   }
   /* ============ 桌面布局 ============ */
@@ -3151,7 +3151,7 @@ window.addEventListener("error", e=>{
    旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
    抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
    同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
-const SJ_BUILD = "2026-11-04.7";
+const SJ_BUILD = "2026-11-04.8";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
