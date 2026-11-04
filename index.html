@@ -241,7 +241,7 @@ input{ font-family:inherit; }
 
 /* 荣誉柜目标横栏：柜顶上方一条横向木牌（DOM 文字，随画面缩放；写清柜子里是哪个目标的成就）。
    做成清晰的「横栏」：圆角木牌 + 渐变底 + 投影，宽度随文字/柜宽，居中贴在柜顶之上 */
-#medal-plate{ position:absolute; left:0; top:0; z-index:34; transform:translate(-50%,0);
+#medal-plate{ position:absolute; left:0; top:0; z-index:46; transform:translate(-50%,0);
   background:linear-gradient(180deg,#F8E9CB,#E8CE9C);
   border:2px solid #B98A5C; border-radius:11px;
   padding:3px 13px; font-size:13px; font-weight:800; color:#6E4F32;
@@ -827,7 +827,7 @@ const W = 800, H = 600;
 const HV_MOBILE = 570;
 function visH(){ return isMobilePortrait() ? HV_MOBILE : H; }
 /* 手机竖屏：横向裁掉两侧留白墙（逻辑 x[VIS_L, VIS_R]），把画面变成近正方形，
-   这样竖向手机上场景能更大、上下空白更少，且盆栽(x258)/蛋糕(x522)都落在可见区、
+   这样竖向手机上场景能更大、上下空白更少，且盆栽(x275)/蛋糕(x515)都落在可见区、
    不被左右面板盖住；桌面端仍显示完整 800 宽。所有「逻辑↔屏幕」水平换算必须用 visW()。 */
 const VIS_L = 96, VIS_R = 704;
 function visL(){ return isMobilePortrait() ? VIS_L : 0; }
@@ -953,7 +953,7 @@ const PROP_BOXES_DESKTOP = [
 ];
 const PROP_BOXES_MOBILE = [
   { x:300, y:430, w:200, h:82 },   // 罐子正前方地面（防精灵穿身）
-  { x:540, y:200, w:200, h:320 },  // 罐子右侧整片装饰区（礼品罐墙面 + 蛋糕 + 盆栽），精灵不进入
+  { x:490, y:200, w:250, h:320 },  // 罐子右侧整片装饰区（礼品罐墙面 + 蛋糕 + 盆栽），精灵不进入
 ];
 function propBoxes(){ return (isMobilePortrait() ? PROP_BOXES_MOBILE : PROP_BOXES_DESKTOP).slice(); }
 function avoidProps(x, y){
@@ -1069,7 +1069,7 @@ function drawRoom(c, theme, night){
   drawFramePicture(c, theme, night);                /* 桌面：右上角画框；手机：右墙空位补一颗（见函数内分支） */
   /* 盆栽：桌面放罐左地面(x150)；手机端放到「罐子左侧地面空地」(x258)——罐左缘≈302、左面板只到顶部，
      底部地面开阔，盆栽落在罐左、地板线上，清晰可见不压面板也不被罐子遮挡 */
-  drawFloorPlant(c, isMobilePortrait() ? 258 : 150, FLOOR_Y, isMobilePortrait() ? 0.85 : 1);
+  drawFloorPlant(c, isMobilePortrait() ? 275 : 150, FLOOR_Y, isMobilePortrait() ? 0.85 : 1);
   drawThemeDecor(c, theme, night);
   if(night){
     /* 夜色氛围：整屋压一层暖蓝暗调（在罐子之前画，罐子仍明亮治愈） */
@@ -1363,9 +1363,10 @@ function drawThemeDecor(c, theme){
      底部地面开阔，摆件落在罐右、地板线上，清晰可见不被遮挡；整体缩小 0.82 适应窄屏 */
   const mobile = isMobilePortrait();
   /* 主题摆件：一律踩在「地板顶线」上（地板上面，不沉进棕色木纹）；
-     桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x610)——罐右缘≈498，
-     与罐子拉开 ~90px 安全间距、彻底离开罐体，不再被罐身盖住；整体缩小 0.82 适应窄屏 */
-  const x = mobile ? 610 : 585, fy = 500;
+     桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x515)——罐右缘≈498，
+     紧贴罐右、仍在手机可见区内（逻辑 x≈515 < 右侧裁切边≈558，不被裁掉）；
+     整体缩小 0.82 适应窄屏 */
+  const x = mobile ? 515 : 585, fy = 500;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -3161,7 +3162,7 @@ window.addEventListener("error", e=>{
    旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
    抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
    同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
-const SJ_BUILD = "2026-11-04.3";
+const SJ_BUILD = "2026-11-04.4";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
