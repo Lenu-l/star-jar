@@ -350,14 +350,17 @@ input{ font-family:inherit; }
   .jar-card .jc-name{ font-size:10px; }
   .jar-card .jc-meta{ font-size:9px; }
   .rail-add{ width:100%; height:34px; font-size:20px; flex:none; }
-  /* 精灵状态牌：小圆角卡片（名字 + 心情 + 喂食按钮竖排），定位在奖章墙右侧稍下，由 JS 写内联 right/top 兜底 */
-  #sprite-card{ position:absolute; right:6px; top:calc(64px + env(safe-area-inset-top)); width:96px; border-radius:16px; padding:8px 10px; }
+  /* 精灵状态牌：手机端做成「扁圆」小卡——名字与心情同一行（文字不换行，绝不把"今天很开心"拆成多行），
+     喂食按钮另起一行，整体 1~2 行、圆角更大更柔和；定位在奖章墙右侧稍下，由 JS 写内联 right/top 兜底 */
+  #sprite-card{ position:absolute; right:6px; top:calc(64px + env(safe-area-inset-top)); width:auto; max-width:160px;
+    display:flex; flex-wrap:wrap; align-items:center; gap:3px 8px; border-radius:20px; padding:7px 12px; }
   #sprite-card .sc-rename{ display:none; }
+  #sprite-card .sc-head{ flex:0 0 auto; gap:4px; }
   #sprite-card .sc-name{ font-size:13px; }
-  #sprite-card .sc-mood{ margin-top:6px; font-size:12px; padding:4px 7px; }
-  #sprite-card .sc-mood-text{ display:inline; }   /* 小框内恢复心情文字 */
+  #sprite-card .sc-mood{ flex:0 0 auto; margin:0; font-size:12px; padding:3px 7px; white-space:nowrap; }
+  #sprite-card .sc-mood-text{ display:inline; white-space:nowrap; }
   #sprite-card .sc-feed{ display:none; }
-  #sprite-card .sc-feed-btn{ margin-top:7px; width:100%; height:30px; padding:0; font-size:12px; line-height:1; }
+  #sprite-card .sc-feed-btn{ flex:1 0 100%; margin:0; width:100%; height:30px; padding:0; font-size:12px; line-height:1; border-radius:14px; }
   #dock{ bottom:max(12px, env(safe-area-inset-bottom)); padding:5px 8px; }
   #check-btn{ width:56px; height:56px; margin:0 2px; }
   .step-btn{ width:54px; height:54px; }
@@ -1316,7 +1319,7 @@ function drawCharm(c, x, topY, C, night){
    把原本空着的右墙填满一点。底色用浅蓝面板 + 木色厚框，在奶油墙上清晰可辨（不再奶油叠奶油）。 */
 function drawFramePicture(c, theme, night){
   let fx, fy, fw, fh;
-  if(isMobilePortrait()){ fx=558; fy=260; fw=88; fh=72; }   /* 手机：右墙空位（可见区右部；下移到状态卡之下，互不遮挡） */
+  if(isMobilePortrait()){ fx=455; fy=152; fw=88; fh=70; }   /* 手机：右上墙空位（可见区内、奖章墙下方、罐子上方，不与状态卡/罐子重叠） */
   else { fx=596; fy=92; fw=112; fh=86; }                     /* 桌面：右上角原味 */
   const bg = night ? "#4A4468" : "#EAF3FB";                  /* 浅蓝面板在奶油墙上清晰可辨；夜晚用暗紫面板 */
   const bd = night ? "#8A7FB4" : "#96613C";
@@ -1348,7 +1351,7 @@ function drawThemeDecor(c, theme){
      桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x515)——罐右缘≈498，
      紧贴罐右、仍在手机可见区内（逻辑 x≈515 < 右侧裁切边≈558，不被裁掉）；
      整体缩小 0.82 适应窄屏 */
-  const x = mobile ? 505 : 585, fy = 500;
+  const x = mobile ? 535 : 585, fy = 500;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -2236,7 +2239,7 @@ function render(){
   else if(packAnim) drawJar(ctx, jar, jarShake);           /* 压缩演出每帧重画（缓存会跟不上） */
   else drawJarCached(ctx, jar, jarShake);
   /* 地板装饰：画在罐子之后 → 叠在罐子前面，永不被罐身遮挡（手机端贴罐子左右两侧、踩地板线） */
-  drawFloorPlant(ctx, isMobilePortrait() ? 295 : 150, 500, isMobilePortrait() ? 0.85 : 1);
+  drawFloorPlant(ctx, isMobilePortrait() ? 275 : 150, 500, isMobilePortrait() ? 0.85 : 1);
   drawThemeDecor(ctx, THEME_MAP[jar.themeId] || THEMES[0]);
   drawGifts(ctx, jar, performance.now()/1000);             /* 大罐两侧地面上已封存的礼品罐 */
   /* 入罐暖光：罐身染暖黄（画在罐子之后，才染得上） */
@@ -3151,7 +3154,7 @@ window.addEventListener("error", e=>{
    旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
    抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
    同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
-const SJ_BUILD = "2026-11-04.8";
+const SJ_BUILD = "2026-11-04.9";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
