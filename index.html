@@ -2949,7 +2949,9 @@ function positionMedalPlate(){
   /* 名牌宽度：桌面不超出柜宽；移动端允许略宽（柜顶上方空白区够放，不被裁切） */
   el.style.maxWidth = (mobile ? Math.min(MEDAL_CAB.w*sx*2.2, window.innerWidth - 16)
                               : Math.max(80, (MEDAL_CAB.w - 22) * sx)) + "px";
-  el.style.left = (r.left + (MEDAL_CAB.x + MEDAL_CAB.w/2) * sx) + "px";
+  /* 横向裁切修正：手机端画布只显示逻辑 x[visL(),visR()]，逻辑坐标换算屏幕 x 必须减 visL()；
+     桌面端 visL()=0 自动失效，故用同一公式即可（修复「目标横栏在手机端被推到屏幕右侧外」） */
+  el.style.left = (r.left + (MEDAL_CAB.x + MEDAL_CAB.w/2 - visL()) * sx) + "px";
   /* 名牌挂在柜顶檐口“正上方”，与奖章格留 6px 间隙，绝不压住奖章 */
   const plateH = el.offsetHeight || 20;
   el.style.top = (r.top + MEDAL_CAB.y * sy - plateH - 6) + "px";
@@ -3159,7 +3161,7 @@ window.addEventListener("error", e=>{
    旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
    抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
    同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
-const SJ_BUILD = "2026-11-04.2";
+const SJ_BUILD = "2026-11-04.3";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
