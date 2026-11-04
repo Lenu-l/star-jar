@@ -239,14 +239,16 @@ input{ font-family:inherit; }
 #sprite-speech::before{ content:""; position:absolute; left:17px; bottom:-6px;
   border:4px solid transparent; border-top-color:var(--paper); z-index:1; }
 
-/* 荣誉柜目标名牌：柜顶小木牌（DOM 文字，随画面缩放；写清柜子里是哪个目标的成就） */
+/* 荣誉柜目标横栏：柜顶上方一条横向木牌（DOM 文字，随画面缩放；写清柜子里是哪个目标的成就）。
+   做成清晰的「横栏」：圆角木牌 + 渐变底 + 投影，宽度随文字/柜宽，居中贴在柜顶之上 */
 #medal-plate{ position:absolute; left:0; top:0; z-index:34; transform:translate(-50%,0);
-  background:linear-gradient(180deg,#F6E4C4,#EBD3A9);
-  border:2px solid #B98A5C; border-radius:9px;
-  padding:1px 8px; font-size:12px; font-weight:800; color:#7A5A3A;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  box-shadow:0 2px 0 rgba(140,90,43,.18);
-  pointer-events:none; user-select:none; font-family:inherit; }
+  background:linear-gradient(180deg,#F8E9CB,#E8CE9C);
+  border:2px solid #B98A5C; border-radius:11px;
+  padding:3px 13px; font-size:13px; font-weight:800; color:#6E4F32;
+  letter-spacing:.4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  box-shadow:0 3px 0 rgba(140,90,43,.20), 0 1px 3px rgba(0,0,0,.10);
+  pointer-events:none; user-select:none; font-family:inherit;
+  max-width:calc(100vw - 16px); }
 /* 小精灵状态牌：画面里专属区域（名字 / 心情 / 喂食机会）。位置由 positionSpriteCard()
    按逻辑坐标计算（宽屏放最右墙面：画框下/摆件上；中窗降级左壁口袋；竖屏放可见区顶部），避开左栏/HUD/罐子/盆栽 */
 #sprite-card{ position:absolute; left:0; top:0; z-index:35; width:198px;
@@ -931,13 +933,13 @@ function isMobilePortrait(){ return window.innerWidth <= 820 && window.innerHeig
 const MAKING_SPRITE_DESKTOP = { x:690, y:492 };  // 打卡时精灵旁观位（站地板右侧看）
 const MAKING_SPRITE_MOBILE = { x:430, y:520 };   // 手机端：旁观位站罐前地面中央、避开右侧装饰/礼品罐
 const ANCHORS_DESKTOP = [                        // 精灵漫游锚点（已避开盆栽/摆件/罐前，防穿身）
-  { x:400, y:233 }, { x:90, y:492 }, { x:230, y:492 },
+  { x:400, y:252 }, { x:90, y:492 }, { x:230, y:492 },
   { x:770, y:490 }, { x:655, y:492 }, { x:745, y:492 },
 ];
 /* 手机端锚点：左侧被目标栏挡死、右侧墙面给了礼品罐/摆件，精灵只在「罐前地面 + 罐口」活动，
    x 全部 ≤460，绝不走到右侧装饰区（x≥498），避免穿身 */
 const ANCHORS_MOBILE = [
-  { x:400, y:233 }, { x:360, y:500 }, { x:440, y:500 },
+  { x:400, y:252 }, { x:360, y:500 }, { x:440, y:500 },
   { x:400, y:300 }, { x:380, y:540 }, { x:430, y:470 },
 ];
 function spriteAnchors(){ return isMobilePortrait() ? ANCHORS_MOBILE : ANCHORS_DESKTOP; }
@@ -1251,10 +1253,12 @@ function drawMedal(c, cx, cy, m, t, night, scale){
 }
 /* 瓶子上方「荣誉柜」：大号木柜，陈列【当前目标】独有的里程碑勋章（每个目标独立计数）
    几何约束（像素级实测）：
-   - 柜顶檐口 y=39：让开顶部花环最低点（中心花底≈34，含摆动余量）
-   - 柜底 y=120：让开精灵跳跃最高点（星尖≈125.4，hop 峰值 16px）
-   - 柜体宽 212 ≈ 瓶身宽 196，居中于罐口 x=400，不占多余墙面 */
-const MEDAL_CAB = { x:294, y:48, w:212, h:72 };
+   - 柜顶檐口 y=51：让开顶部花环最低点（桌面中心花底≈30，含摆动余量，间隙 21px）
+   - 柜底 y=132：精灵漫游最高脚位在罐颈 y=252（锚点上限 252，不往罐里沉），头部最高≈144，
+     与柜底余 ≥12px；动态「柜底让开跳跃精灵≥3px」由实时测得保证（_probe_layout）
+   - 柜体宽 212 ≈ 瓶身宽 196，居中于罐口 x=400，不占多余墙面
+   - 柜顶上方留「目标横栏」#medal-plate（DOM 文字，防中文方框）：显示当前目标名 + 累计天数 */
+const MEDAL_CAB = { x:294, y:60, w:212, h:72 };
 function drawMedals(c, night){
   medalHits = [];
   const t = performance.now()/1000;
@@ -2082,8 +2086,9 @@ function updateSprite(dt){
         s.restT = rnd(2, 3.5);
       } else {
         const a = pick(spriteAnchors());
-        /* 罐口锚点（空中）垂直锁在罐沿上，不往罐口里沉；地面锚点保留随机抖动 */
-        const nx = a.x + rnd(-14,14), ny = (a.y < 400) ? Math.min(a.y, 234) : a.y + rnd(-8,8);
+        /* 罐口锚点（空中）垂直锁在罐颈（y≥252）上，不往罐里沉；地面锚点保留随机抖动。
+           上限 234→252：奖章柜下移到 y=60（柜底132）后，精灵站罐颈头部最高点≈144，与柜底仍余 ≥12px */
+        const nx = a.x + rnd(-14,14), ny = (a.y < 400) ? Math.min(a.y, 252) : a.y + rnd(-8,8);
         if(Math.hypot(nx - s.x, ny - s.y) < 24){
           s.restT = rnd(.6, 1.4);                             /* 新目标几乎原地：稍后再选，绝不发 3px 内的 goto（防冻结） */
         } else {
