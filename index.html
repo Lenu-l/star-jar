@@ -2781,7 +2781,9 @@ function openHelpModal(){
       ⑩ <b>满罐封存</b>：一个罐子最多装 <b>50 枚</b>——前 20 枚是大颗的；装到第 21 枚时整罐食物会「嗖」地变小，之后就能密密麻麻装到 50 枚。装满后罐子会<b>扎上礼品缎带、缩成小罐搬到地上</b>（罐子左右两边），同时自动开一个新罐继续装；点地上的礼品罐能看里面装了什么。目标的连续天数、勋章都不受影响。<br>
       ⑪ <b>进度备份（重要）</b>：进度保存在<b>这台设备的浏览器里</b>（不会自动上传）。点右上角 📊 →「导出备份」下载存档文件，建议每周存一份到网盘 / 微信文件传输助手；换手机、清浏览器数据前，用「导入备份」选那个文件就能全部恢复。
     </div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #E3D3B8;font-size:11px;color:#B09A78;text-align:center">当前版本 <b id="build-tag"></b> · 线上有新版会自动刷新</div>
     <div class="btn-row"><button class="btn btn-primary" id="m-ok">知道啦</button></div>`);
+  const bt = $("#build-tag"); if(bt) bt.textContent = (typeof SJ_BUILD === "string" ? SJ_BUILD : "");
   $("#m-ok").addEventListener("click", ()=>{ closeModal(); state.seenHelp = true; save(); });
 }
 let toastT = null;
@@ -3153,6 +3155,30 @@ window.addEventListener("error", e=>{
   if(window.__errShown) return; window.__errShown = true;
   try{ toast("运行出了点问题：" + (e.message || "未知错误")); }catch(_){}
 });
+/* ===== 版本自检：GitHub Pages 的 HTML 缓存最长 10 分钟（max-age=600），
+   旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
+   抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
+   同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
+const SJ_BUILD = "2026-11-04.2";
+(function versionWatch(){
+  if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
+  if(typeof fetch !== "function") return;
+  setTimeout(function(){
+    fetch(location.href, { cache:"no-store" })
+      .then(function(r){ return r.ok ? r.text() : ""; })
+      .then(function(txt){
+        const m = txt && txt.match(/SJ_BUILD\s*=\s*"([^"]+)"/);
+        if(!m || m[1] === SJ_BUILD) return;                  /* 已是最新版 */
+        let done = false;
+        try{ done = sessionStorage.getItem("sj_autoreload") === "1"; }catch(_){}
+        if(done) return;
+        try{ sessionStorage.setItem("sj_autoreload", "1"); }catch(_){}
+        toast("发现新版本，正在刷新…");
+        setTimeout(function(){ location.reload(true); }, 500);
+      })
+      .catch(function(){});
+  }, 1500);
+})();
 boot();
 </script>
 </body>
