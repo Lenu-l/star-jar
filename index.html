@@ -914,7 +914,7 @@ function layoutScene(){
 }
 
 /* 场景关键坐标（逻辑坐标，画面 800×600） */
-const JAR = { x:400, y:236, w:196, h:264 };   // 罐子坐落在正常地板线（y500）上，桌面/手机一致
+const JAR = isMobilePortrait() ? { x:400, y:268, w:196, h:264 } : { x:400, y:236, w:196, h:264 };   // 手机端地板降到532 → 罐底坐532；桌面保持236/地板500
 const JAR_CAP = 50;                              // 单罐总容量（两档密度）：≤20 枚大颗（4 枚×5 排），第 21 枚起整罐压缩为小颗（5 枚×10 排），满 50 枚封存成礼品罐
 const PACK_LV = [                                // 罐内堆叠两档密度参数（跨档时 packAnim 连续插值，重排无跳变）
   { target:50, perRow:4, colW:44, rowH:38 },     // 第一档：20 枚内，大颗
@@ -922,24 +922,24 @@ const PACK_LV = [                                // 罐内堆叠两档密度参�
 ];
 let packAnim = null;                             // { t, dur } 跨档压缩演出（第 21 枚落罐时触发，全部旧食物一起变小）
 function packLevel(n){ return n<=20 ? 0 : 1; }   // 堆叠档位：≤20 枚大颗 / 更多则压缩小颗
-const TRAY = { x:400, y:222 };   // 打卡台：罐口正下方，桌面/手机一致
-const SPRITE_HOME = { x:400, y:233 };   // 精灵罐口位，桌面/手机一致
+const TRAY = isMobilePortrait() ? { x:400, y:254 } : { x:400, y:222 };   // 打卡台随罐口下移
+const SPRITE_HOME = isMobilePortrait() ? { x:400, y:265 } : { x:400, y:233 };   // 精灵罐口位随罐下移
 /* 窄屏（竖向）布局判定：与 CSS `@media (max-width:820px) and (orientation:portrait)` 保持一致。
    竖向窄窗（平板竖屏、拖窄的竖向浏览器窗口）之前会落入"桌面宽面板"把边缘装饰全遮住，
    故竖向 ≤820 走窄面板布局；横屏窄窗仍走桌面（面板占比小、装饰基本可见）。
    该场景放大裁切（只保留中段），因此精灵锚点 / 禁区 / 礼品罐槽位 / 地面摆件都要按此切换 */
 function isMobilePortrait(){ return window.innerWidth <= 820 && window.innerHeight >= window.innerWidth; }
 const MAKING_SPRITE_DESKTOP = { x:690, y:492 };  // 打卡时精灵旁观位（站地板右侧看）
-const MAKING_SPRITE_MOBILE = { x:430, y:495 };   // 手机端：旁观位站罐前地面、避开右侧装饰/礼品罐
+const MAKING_SPRITE_MOBILE = { x:430, y:525 };   // 手机端：旁观位站罐前地面（地板线532）、避开右侧装饰/礼品罐
 const ANCHORS_DESKTOP = [                        // 精灵漫游锚点（已避开盆栽/摆件/罐前，防穿身）
   { x:400, y:252 }, { x:90, y:492 }, { x:230, y:492 },
   { x:770, y:490 }, { x:655, y:492 }, { x:745, y:492 },
 ];
-/* 手机端锚点：地板线回到 500（与桌面一致），精灵在「罐口 + 罐左地面」活动；
-   右侧整片留给装饰/礼品罐（PROP_BOXES_MOBILE 已禁入），故锚点 x 集中在左侧与罐口 */
+/* 手机端锚点：地板线降到 532，精灵在「罐口 + 罐左地面」活动（地面锚点 y≈525，贴新地板线）；
+   右侧整片留给装饰/礼品罐（PROP_BOXES_MOBILE 已禁入），且 x 全部 <300 避开罐前与盆栽，故锚点集中在左侧 */
 const ANCHORS_MOBILE = [
-  { x:400, y:250 }, { x:150, y:492 }, { x:250, y:492 },
-  { x:290, y:492 }, { x:200, y:492 }, { x:130, y:492 },
+  { x:400, y:270 }, { x:150, y:525 }, { x:200, y:525 },
+  { x:290, y:525 }, { x:175, y:525 }, { x:130, y:525 },
 ];
 function spriteAnchors(){ return isMobilePortrait() ? ANCHORS_MOBILE : ANCHORS_DESKTOP; }
 function makingSprite(){ return isMobilePortrait() ? MAKING_SPRITE_MOBILE : MAKING_SPRITE_DESKTOP; }
@@ -951,9 +951,9 @@ const PROP_BOXES_DESKTOP = [
   { x:292, y:430, w:216, h:70 },   // 罐子正前方（防挡罐主角）
 ];
 const PROP_BOXES_MOBILE = [
-  { x:300, y:430, w:200, h:82 },   // 罐子正前方地面（防精灵穿身）
-  { x:490, y:200, w:250, h:320 },  // 罐子右侧整片装饰区（礼品罐墙面 + 蛋糕），精灵不进入
-  { x:255, y:450, w:40,  h:55 },   // 盆栽（x275 踩地板顶线），防精灵穿身
+  { x:300, y:445, w:200, h:100 },  // 罐子正前方地面（防精灵穿身，铺到地板线532）
+  { x:490, y:200, w:250, h:345 },  // 罐子右侧整片装饰区（礼品罐墙面 + 蛋糕），精灵不进入
+  { x:225, y:510, w:50,  h:35 },   // 盆栽（x248 踩地板线532），防精灵穿身
 ];
 function propBoxes(){ return (isMobilePortrait() ? PROP_BOXES_MOBILE : PROP_BOXES_DESKTOP).slice(); }
 function avoidProps(x, y){
@@ -1047,8 +1047,10 @@ function seedRand(seed){ let s = seed*9301+49297; return ()=>{ s=(s*9301+49297)%
 function drawRoom(c, theme, night){
   /* 地板线统一 500（桌面/手机一致）：地板只占屏幕底部一小条，不抬高、不放大，
      罐子 / 装饰 / 精灵都坐在这条正常地面上；下方留给底部 dock 覆盖 */
-  const FLOOR_Y = 500;
-  const FLOOR_H = 33;
+  /* 手机竖屏：地板线降到 532（桌面 500），罐子 / 装饰随之下移，并让薄地板带一直铺到画面底
+     （532→visH 即 570），消除罐底下方那截米白留白；地板带厚度保持不变（仍是薄薄一条），桌面端不动 */
+  const FLOOR_Y = isMobilePortrait() ? 532 : 500;
+  const FLOOR_H = isMobilePortrait() ? (visH() - FLOOR_Y) : 33;
   const wall1 = night ? "#3A3357" : "#FFF6E3";
   const wall2 = night ? "#322B4C" : "#FBEFD6";
   const wood1 = night ? "#6E5436" : "#C8956A";
@@ -1345,14 +1347,11 @@ function drawFloorPlant(c, x, fy, scale){
 }
 function drawThemeDecor(c, theme){
   /* 主题摆件：一律踩在「地板顶线」上（地板上面，不沉进棕色木纹）；
-     桌面端放罐右地面(x580)；手机端放到「罐子右侧地面空地」(x518)——罐右缘≈498、右面板只到顶部，
-     底部地面开阔，摆件落在罐右、地板线上，清晰可见不被遮挡；整体缩小 0.82 适应窄屏 */
-  const mobile = isMobilePortrait();
-  /* 主题摆件：一律踩在「地板顶线」上（地板上面，不沉进棕色木纹）；
-     桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x515)——罐右缘≈498，
-     紧贴罐右、仍在手机可见区内（逻辑 x≈515 < 右侧裁切边≈558，不被裁掉）；
+     桌面端放罐右地面(x585)；手机端放到「罐子右侧地面空地」(x535, fy532)——罐右缘≈498，
+     紧贴罐右、仍在手机可见区内（逻辑 x≈535 < 右侧礼物罐陈列列≈560，不与礼品罐重叠）；
      整体缩小 0.82 适应窄屏 */
-  const x = mobile ? 535 : 585, fy = 500;
+  const mobile = isMobilePortrait();
+  const x = mobile ? 535 : 585, fy = mobile ? 532 : 500;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -2240,7 +2239,7 @@ function render(){
   else if(packAnim) drawJar(ctx, jar, jarShake);           /* 压缩演出每帧重画（缓存会跟不上） */
   else drawJarCached(ctx, jar, jarShake);
   /* 地板装饰：画在罐子之后 → 叠在罐子前面，永不被罐身遮挡（手机端贴罐子左右两侧、踩地板线） */
-  drawFloorPlant(ctx, isMobilePortrait() ? 275 : 150, 500, isMobilePortrait() ? 0.85 : 1);
+  drawFloorPlant(ctx, isMobilePortrait() ? 248 : 150, isMobilePortrait() ? 532 : 500, isMobilePortrait() ? 0.85 : 1);
   drawThemeDecor(ctx, THEME_MAP[jar.themeId] || THEMES[0]);
   drawGifts(ctx, jar, performance.now()/1000);             /* 大罐两侧地面上已封存的礼品罐 */
   /* 入罐暖光：罐身染暖黄（画在罐子之后，才染得上） */
@@ -3157,7 +3156,7 @@ window.addEventListener("error", e=>{
    不一致 → 弹出可点击的「发现新版本」横幅，并自动用「唯一参数 URL」整页刷新，
    整页刷新走的是与旧 URL 不同的查询串，浏览器与 CDN 都会当作新请求去源站取最新，
    从而真正绕开所有缓存（旧的 sessionStorage 一次性守卫 + reload(true) 做不到这点）。 ===== */
-const SJ_BUILD = "2026-11-05.2";
+const SJ_BUILD = "2026-11-05.3";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
