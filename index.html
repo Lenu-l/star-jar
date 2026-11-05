@@ -3153,29 +3153,53 @@ window.addEventListener("error", e=>{
   try{ toast("运行出了点问题：" + (e.message || "未知错误")); }catch(_){}
 });
 /* ===== 版本自检：GitHub Pages 的 HTML 缓存最长 10 分钟（max-age=600），
-   旧缓存会让你"看不到更新"。这里静默拉一份线上最新页面（no-store 绕开所有缓存），
-   抽出构建号与当前运行版本比对：不一致说明线上已有新版 → 自动重载一次。
-   同一会话最多自动重载一次（sessionStorage 守卫），不会死循环刷新。 ===== */
-const SJ_BUILD = "2026-11-04.10";
+   旧缓存会让你"看不到更新"——尤其内嵌预览面板 / 手机浏览器会顽固地复用旧 HTML。
+   这里拉一份线上最新页面（带唯一参数 + no-store 双重击穿缓存），抽出构建号比对：
+   不一致 → 弹出可点击的「发现新版本」横幅，并自动用「唯一参数 URL」整页刷新，
+   整页刷新走的是与旧 URL 不同的查询串，浏览器与 CDN 都会当作新请求去源站取最新，
+   从而真正绕开所有缓存（旧的 sessionStorage 一次性守卫 + reload(true) 做不到这点）。 ===== */
+const SJ_BUILD = "2026-11-05.1";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
-  setTimeout(function(){
-    fetch(location.href, { cache:"no-store" })
-      .then(function(r){ return r.ok ? r.text() : ""; })
-      .then(function(txt){
-        const m = txt && txt.match(/SJ_BUILD\s*=\s*"([^"]+)"/);
-        if(!m || m[1] === SJ_BUILD) return;                  /* 已是最新版 */
-        let done = false;
-        try{ done = sessionStorage.getItem("sj_autoreload") === "1"; }catch(_){}
-        if(done) return;
-        try{ sessionStorage.setItem("sj_autoreload", "1"); }catch(_){}
-        toast("发现新版本，正在刷新…");
-        setTimeout(function(){ location.reload(true); }, 500);
-      })
-      .catch(function(){});
-  }, 1500);
+  if(/[?&]__v=/.test(location.search)) return;              /* 已带刷新参数，避免循环 */
+  let n = 0;
+  (function tick(){
+    if(n++ > 12) return;
+    setTimeout(function(){
+      const base = location.href.split("#")[0].split("?")[0];
+      const url = base + "?__v=" + Date.now();
+      fetch(url, { cache:"no-store" })
+        .then(function(r){ return r.ok ? r.text() : ""; })
+        .then(function(txt){
+          const m = txt && txt.match(/SJ_BUILD\s*=\s*"([^"]+)"/);
+          if(!m || m[1] === SJ_BUILD) return;               /* 已是最新版 */
+          offerUpdate(m[1]);
+        })
+        .catch(function(){ tick(); });                       /* 网络抖动则重试 */
+    }, 1500 + n * 400);
+  })();
 })();
+function offerUpdate(newBuild){
+  try{ if(window.__sjUpdateOffered) return; window.__sjUpdateOffered = true; }catch(_){}
+  let bar = document.getElementById("sj-update-bar");
+  if(!bar){
+    bar = document.createElement("div");
+    bar.id = "sj-update-bar";
+    bar.style.cssText = "position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:200;"+
+      "background:#FF8FB0;color:#fff;font:600 14px/1.4 system-ui,sans-serif;padding:10px 16px;"+
+      "border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer;text-align:center;max-width:90vw;";
+    bar.onclick = function(){ goFresh(); };
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = "🎉 发现新版本 " + newBuild + "，点此刷新";
+  /* 也自动在 1.2s 后强制刷新（带唯一参数，击穿缓存） */
+  setTimeout(goFresh, 1200);
+}
+function goFresh(){
+  const base = location.href.split("#")[0].split("?")[0];
+  location.href = base + "?__v=" + Date.now();
+}
 boot();
 </script>
 </body>
