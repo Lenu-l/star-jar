@@ -144,6 +144,8 @@ input{ font-family:inherit; }
   background:var(--paper); border:3px dashed var(--line); border-radius:14px; box-shadow:0 3px 0 rgba(140,90,43,.18);
   pointer-events:auto; }
 .rail-add:active{ transform:translateY(2px); }
+/* 右侧「更多目标」栏：桌面隐藏；仅手机竖屏在 @media 里启用，承接左栏放不下的目标 */
+#jar-rail-right{ display:none; }
 
 /* ============ 当前目标卡片 ============ */
 .hud-goal{ display:flex; align-items:center; gap:7px; padding:6px 10px; }
@@ -343,13 +345,23 @@ input{ font-family:inherit; }
   #jar-rail{ left:6px; right:auto; top:calc(112px + env(safe-area-inset-top)); bottom:auto;
     width:72px; flex-direction:column; align-items:stretch; gap:6px;
     max-height:calc(100vh - 112px - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    overflow-y:auto; overflow-x:hidden; padding:0 0 2px; z-index:18; }
-  #rail-list{ flex-direction:column; flex:0 0 auto; gap:6px; overflow:visible; }
+    overflow:hidden; padding:0 0 2px; z-index:18; }
+  /* 列表自己滚动、加号 flex:none 永远留在底部 → 目标再多也不会把「＋」挤出屏幕 */
+  #rail-list{ flex-direction:column; flex:0 1 auto; min-height:0; gap:6px; overflow-y:auto; overflow-x:hidden; }
+  #rail-list::-webkit-scrollbar{ width:0; }
   .jar-card{ width:auto; flex:none; padding:6px; }
   .jar-card .jc-glyph{ width:24px; height:24px; font-size:14px; border-radius:8px; }
   .jar-card .jc-name{ font-size:10px; }
   .jar-card .jc-meta{ font-size:9px; }
-  .rail-add{ width:100%; height:34px; font-size:20px; flex:none; }
+  .rail-add{ width:100%; height:34px; font-size:20px; flex:0 0 auto; position:sticky; bottom:0; }
+  /* 右栏：左栏放满 RAIL_LEFT_MAX 个后，多出来的目标排到这里（与左栏对称、独立滚动） */
+  #jar-rail-right{ display:flex; position:absolute; right:6px; top:calc(112px + env(safe-area-inset-top));
+    bottom:auto; width:72px; flex-direction:column; align-items:stretch; gap:6px;
+    max-height:calc(100vh - 112px - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow:hidden; padding:0 0 2px; z-index:18; }
+  #rail-list-right{ display:flex; flex:0 1 auto; min-height:0; flex-direction:column; gap:6px;
+    overflow-y:auto; overflow-x:hidden; }
+  #rail-list-right::-webkit-scrollbar{ width:0; }
   /* 精灵状态牌：手机端做成「小圆」小卡——缩小字号/内边距/圆角；固定在画面最右下角（打卡栏之上） */
   #sprite-card{ position:absolute; right:6px; width:auto; max-width:132px;
     display:flex; flex-wrap:wrap; align-items:center; gap:2px 6px; border-radius:16px; padding:5px 9px; }
@@ -406,6 +418,10 @@ input{ font-family:inherit; }
   <nav id="jar-rail">
     <div id="rail-list"></div>
     <button class="rail-add" id="btn-add" title="新建目标罐">＋</button>
+  </nav>
+  <!-- 右侧「更多目标」栏：手机竖屏下承接左栏放不下的目标（桌面隐藏） -->
+  <nav id="jar-rail-right" aria-label="更多目标">
+    <div id="rail-list-right"></div>
   </nav>
 
   <!-- 底部 dock：仅打卡按钮 -->
@@ -857,6 +873,7 @@ function resize(){
   setT(k, -visL() * k, 0);                     /* 横向裁切：逻辑 VIS_L 对齐屏幕左缘，两侧留白墙不绘制 */
   bgKey = ""; jarKey = "";                     /* 缓存按新尺寸重建 */
   layoutOverlays();
+  if(state && Array.isArray(state.jars)) renderRail();   /* 横竖屏切换时重算左右栏分流 */
 }
 window.addEventListener("resize", resize);
 
@@ -952,7 +969,7 @@ const PROP_BOXES_DESKTOP = [
 const PROP_BOXES_MOBILE = [
   { x:300, y:445, w:200, h:100 },  // 罐子正前方地面（防精灵穿身，铺到地板线532）
   { x:490, y:200, w:250, h:345 },  // 罐子右侧整片装饰区（礼品罐墙面 + 蛋糕），精灵不进入
-  { x:215, y:510, w:50,  h:55 },   // 盆栽（x240 踩地板线560），防精灵穿身
+  { x:210, y:515, w:58,  h:62 },   // 盆栽（x240 底座570），防精灵穿身
 ];
 function propBoxes(){ return (isMobilePortrait() ? PROP_BOXES_MOBILE : PROP_BOXES_DESKTOP).slice(); }
 function avoidProps(x, y){
@@ -1350,7 +1367,7 @@ function drawThemeDecor(c, theme){
      紧贴罐右、仍在手机可见区内（逻辑 x≈566 < 右侧礼物罐陈列列≈560，不与礼品罐重叠）；
      整体缩小 0.82 适应窄屏 */
   const mobile = isMobilePortrait();
-  const x = mobile ? 566 : 595, fy = mobile ? 568 : 516;
+  const x = mobile ? 566 : 595, fy = mobile ? 570 : 516;
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -2238,7 +2255,7 @@ function render(){
   else if(packAnim) drawJar(ctx, jar, jarShake);           /* 压缩演出每帧重画（缓存会跟不上） */
   else drawJarCached(ctx, jar, jarShake);
   /* 地板装饰：画在罐子之后 → 叠在罐子前面，永不被罐身遮挡（手机端贴罐子左右两侧、踩地板线） */
-  drawFloorPlant(ctx, isMobilePortrait() ? 240 : 138, isMobilePortrait() ? 560 : 516, isMobilePortrait() ? 0.85 : 1);
+  drawFloorPlant(ctx, isMobilePortrait() ? 240 : 138, isMobilePortrait() ? 570 : 516, isMobilePortrait() ? 0.85 : 1);
   drawThemeDecor(ctx, THEME_MAP[jar.themeId] || THEMES[0]);
   drawGifts(ctx, jar, performance.now()/1000);             /* 大罐两侧地面上已封存的礼品罐 */
   /* 入罐暖光：罐身染暖黄（画在罐子之后，才染得上） */
@@ -2294,8 +2311,15 @@ function renderHUD(){
   $("#hud-goal-name").textContent = jar.name;
   $("#hud-goal-meta").textContent = "连续 " + jar.streak + " · 累计 " + jdays + " 天";
 }
+/* 手机竖屏：左栏最多放 RAIL_LEFT_MAX 个目标，第 5 个起排到右栏（右栏与左栏对称、独立滚动）。
+   桌面端不分流——左栏本身可滚动且「＋」固定在底部，放多少都不会消失 */
+const RAIL_LEFT_MAX = 4;
 function renderRail(){
   const list = $("#rail-list"); if(!list) return; list.innerHTML = "";
+  const rlist = $("#rail-list-right"), rwrap = $("#jar-rail-right");
+  if(rlist) rlist.innerHTML = "";
+  const split = isMobilePortrait() && !!rlist && !!rwrap;
+  if(rwrap) rwrap.style.display = (split && state.jars.length > RAIL_LEFT_MAX) ? "flex" : "none";
   state.jars.forEach((jar,i)=>{
     const theme = THEME_MAP[jar.themeId] || THEMES[0];
     const days = Object.keys(jar.history||{}).length;
@@ -2312,7 +2336,7 @@ function renderRail(){
     card.addEventListener("click", ()=>{ if(i===state.activeJar) return; state.activeJar=i; save(); refreshAll(); SFX.pop(); });
     const del = card.querySelector(".jc-del");
     del.addEventListener("click", (e)=>{ e.stopPropagation(); deleteJar(i); });
-    list.appendChild(card);
+    (split && i >= RAIL_LEFT_MAX ? rlist : list).appendChild(card);
   });
 }
 /* 删除某个目标罐（含其打卡记录与勋章）；至少保留一个；删除后修正当前选中索引 */
@@ -3155,7 +3179,7 @@ window.addEventListener("error", e=>{
    不一致 → 弹出可点击的「发现新版本」横幅，并自动用「唯一参数 URL」整页刷新，
    整页刷新走的是与旧 URL 不同的查询串，浏览器与 CDN 都会当作新请求去源站取最新，
    从而真正绕开所有缓存（旧的 sessionStorage 一次性守卫 + reload(true) 做不到这点）。 ===== */
-const SJ_BUILD = "2026-11-05.6";
+const SJ_BUILD = "2026-11-05.7";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
