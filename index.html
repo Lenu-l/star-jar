@@ -995,8 +995,8 @@ const PROP_BOXES_DESKTOP = [
 ];
 const PROP_BOXES_MOBILE = [
   { x:300, y:445, w:200, h:100 },  // 罐子正前方地面（防精灵穿身，铺到地板线532）
-  { x:490, y:200, w:250, h:345 },  // 罐子右侧整片装饰区（礼品罐墙面 + 蛋糕），精灵不进入
-  { x:210, y:515, w:58,  h:62 },   // 盆栽（x240 底座570），防精灵穿身
+  { x:450, y:200, w:290, h:345 },  // 罐子右侧整片装饰区（礼品罐墙面 + x478 小蛋糕），精灵不进入
+  { x:246, y:545, w:58,  h:62 },   // 盆栽（x276 底座600），防精灵穿身
 ];
 function propBoxes(){ return (isMobilePortrait() ? PROP_BOXES_MOBILE : PROP_BOXES_DESKTOP).slice(); }
 function avoidProps(x, y){
@@ -1389,12 +1389,13 @@ function drawFloorPlant(c, x, fy, scale){
   c.restore();
 }
 function drawThemeDecor(c, theme){
-  /* 主题摆件：一律踩在「地板顶线」上（地板上面，不沉进棕色木纹）；
-     桌面端放罐右地面(x595)；手机端放到「罐子右侧地面空地」(x566, fy568)——罐右缘≈498，
-     紧贴罐右、仍在手机可见区内（逻辑 x≈566 < 右侧礼物罐陈列列≈560，不与礼品罐重叠）；
-     整体缩小 0.82 适应窄屏 */
+  /* 主题摆件：桌面端放罐右地面(x595)；手机端放在罐子右前方地板带(x505, fy600)——
+     真机 390px 视口罐子几乎占满宽度，x566 会被完全裁出屏幕、x505 仍露不全 → 收到 x478。
+     罐底以下地板带没有罐身，摆在这里既不挡罐子也能完整看见；整体缩小 0.82 适应窄屏 */
   const mobile = isMobilePortrait();
-  const x = mobile ? 566 : 595, fy = mobile ? 570 : 516;
+  /* 手机端 390px 视口里罐子几乎占满宽度，x566 会被挤出右边缘 → 收回到罐右地板空地(x505)，
+     罐底以下那条地板带没有罐身，摆在这里既不挡罐子也能完整看见 */
+  const x = mobile ? 478 : 595, fy = mobile ? 600 : 516;   /* 手机端再往下坐一点，装饰本体落进棕色地板带；桌面端保持原样 */
   const s = mobile ? 0.82 : 1;
   c.save();
   if(s !== 1){ c.translate(x, fy); c.scale(s, s); c.translate(-x, -fy); }
@@ -2282,7 +2283,8 @@ function render(){
   else if(packAnim) drawJar(ctx, jar, jarShake);           /* 压缩演出每帧重画（缓存会跟不上） */
   else drawJarCached(ctx, jar, jarShake);
   /* 地板装饰：画在罐子之后 → 叠在罐子前面，永不被罐身遮挡（手机端贴罐子左右两侧、踩地板线） */
-  drawFloorPlant(ctx, isMobilePortrait() ? 240 : 138, isMobilePortrait() ? 570 : 516, isMobilePortrait() ? 0.85 : 1);
+  /* 左边小树：往右挪一点（离屏幕左缘更远、更完整），再往下坐一点 */
+  drawFloorPlant(ctx, isMobilePortrait() ? 276 : 138, isMobilePortrait() ? 600 : 516, isMobilePortrait() ? 0.85 : 1);
   drawThemeDecor(ctx, THEME_MAP[jar.themeId] || THEMES[0]);
   drawGifts(ctx, jar, performance.now()/1000);             /* 大罐两侧地面上已封存的礼品罐 */
   /* 入罐暖光：罐身染暖黄（画在罐子之后，才染得上） */
@@ -3206,7 +3208,7 @@ window.addEventListener("error", e=>{
    不一致 → 弹出可点击的「发现新版本」横幅，并自动用「唯一参数 URL」整页刷新，
    整页刷新走的是与旧 URL 不同的查询串，浏览器与 CDN 都会当作新请求去源站取最新，
    从而真正绕开所有缓存（旧的 sessionStorage 一次性守卫 + reload(true) 做不到这点）。 ===== */
-const SJ_BUILD = "2026-11-05.8";
+const SJ_BUILD = "2026-11-05.9";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
