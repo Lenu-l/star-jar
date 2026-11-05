@@ -344,22 +344,23 @@ input{ font-family:inherit; }
      避开花环/荣誉柜、不压场景；这里给 CSS 兜底值 */
   #jar-rail{ left:6px; right:auto; top:calc(112px + env(safe-area-inset-top)); bottom:auto;
     width:72px; flex-direction:column; align-items:stretch; gap:6px;
-    max-height:calc(100vh - 112px - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height:calc(100vh - 112px - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow:hidden; padding:0 0 2px; z-index:18; }
-  /* 列表自己滚动、加号 flex:none 永远留在底部 → 目标再多也不会把「＋」挤出屏幕 */
-  #rail-list{ flex-direction:column; flex:0 1 auto; min-height:0; gap:6px; overflow-y:auto; overflow-x:hidden; }
+  /* 列表吃掉剩余高度并自己滚动；加号是列表「之后」独立的一行（不再 sticky 浮在列表上盖住卡片） */
+  #rail-list{ flex-direction:column; flex:1 1 auto; min-height:0; gap:6px; overflow-y:auto; overflow-x:hidden; }
   #rail-list::-webkit-scrollbar{ width:0; }
   .jar-card{ width:auto; flex:none; padding:6px; }
   .jar-card .jc-glyph{ width:24px; height:24px; font-size:14px; border-radius:8px; }
   .jar-card .jc-name{ font-size:10px; }
   .jar-card .jc-meta{ font-size:9px; }
-  .rail-add{ width:100%; height:34px; font-size:20px; flex:0 0 auto; position:sticky; bottom:0; }
-  /* 右栏：左栏放满 RAIL_LEFT_MAX 个后，多出来的目标排到这里（与左栏对称、独立滚动） */
+  .rail-add{ width:100%; height:34px; font-size:20px; flex:0 0 auto; position:relative; z-index:2; }
+  /* 右栏：左栏放满 RAIL_LEFT_MAX 个后，多出来的目标排到这里（与左栏对称、独立滚动）。
+     下沿再让出小精灵状态卡的高度，避免与右下角状态卡重叠；真实高度由 JS layoutRails() 按可见区覆盖 */
   #jar-rail-right{ display:flex; position:absolute; right:6px; top:calc(112px + env(safe-area-inset-top));
     bottom:auto; width:72px; flex-direction:column; align-items:stretch; gap:6px;
-    max-height:calc(100vh - 112px - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height:calc(100vh - 112px - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow:hidden; padding:0 0 2px; z-index:18; }
-  #rail-list-right{ display:flex; flex:0 1 auto; min-height:0; flex-direction:column; gap:6px;
+  #rail-list-right{ display:flex; flex:1 1 auto; min-height:0; flex-direction:column; gap:6px;
     overflow-y:auto; overflow-x:hidden; }
   #rail-list-right::-webkit-scrollbar{ width:0; }
   /* 精灵状态牌：手机端做成「小圆」小卡——缩小字号/内边距/圆角；固定在画面最右下角（打卡栏之上） */
@@ -873,6 +874,7 @@ function resize(){
   setT(k, -visL() * k, 0);                     /* 横向裁切：逻辑 VIS_L 对齐屏幕左缘，两侧留白墙不绘制 */
   bgKey = ""; jarKey = "";                     /* 缓存按新尺寸重建 */
   layoutOverlays();
+  layoutRails();                               /* 按真实可见区给左右目标栏定高（含状态卡避让） */
   if(state && Array.isArray(state.jars)) renderRail();   /* 横竖屏切换时重算左右栏分流 */
 }
 window.addEventListener("resize", resize);
@@ -927,6 +929,31 @@ function layoutScene(){
     el.style.width  = Math.round(sw) + "px";
     el.style.height = Math.round(sh) + "px";
   });
+}
+/* 手机竖屏：左右目标栏按「真实可见区」定高（与 layoutScene 一样绕开 100vh 陷阱）。
+   左栏下沿停在打卡栏上沿；右栏再让开右下角小精灵状态卡。
+   列表自己滚动 + 「＋」是列表之后独立的一行 → 建多少个目标都不会盖住卡片、加号也不会消失。 */
+function layoutRails(){
+  const left = document.getElementById("jar-rail"), right = document.getElementById("jar-rail-right");
+  if(!isMobilePortrait()){
+    [left, right].forEach(el=>{ if(el) el.style.maxHeight = ""; });
+    return;
+  }
+  const safe = getSafeInset();
+  const railTop = 112 + (safe.top || 0);
+  const dockEl = document.getElementById("dock");
+  const dockTop = dockEl && dockEl.getBoundingClientRect().top > 0
+    ? dockEl.getBoundingClientRect().top : (window.innerHeight - 80);
+  /* 左栏在屏幕最左缘、打卡栏居中，二者水平不重叠 → 下沿可以用到屏幕底（不再扣打卡栏整段高度），
+     这样 6 张卡 + 「＋」在 375×667 这类小屏也能一屏放完。容器高度仍是 auto（按内容收缩），
+     只是不再被过早的 max-height 挤进滚动区，卡片少时外观完全不变。 */
+  const leftH = Math.max(180, Math.round(window.innerHeight - railTop - 12 - (safe.bottom || 0)));
+  if(left) left.style.maxHeight = leftH + "px";
+  const card = document.getElementById("sprite-card");
+  const cr = card ? card.getBoundingClientRect() : null;
+  const rightBottom = (cr && cr.height > 0 && cr.top > railTop) ? cr.top : (dockTop - 92);
+  const rightH = Math.max(140, Math.round(rightBottom - railTop - 8));
+  if(right) right.style.maxHeight = rightH + "px";
 }
 
 /* 场景关键坐标（逻辑坐标，画面 800×600） */
@@ -2311,9 +2338,9 @@ function renderHUD(){
   $("#hud-goal-name").textContent = jar.name;
   $("#hud-goal-meta").textContent = "连续 " + jar.streak + " · 累计 " + jdays + " 天";
 }
-/* 手机竖屏：左栏最多放 RAIL_LEFT_MAX 个目标，第 5 个起排到右栏（右栏与左栏对称、独立滚动）。
+/* 手机竖屏：左栏最多放 RAIL_LEFT_MAX 个目标，第 7 个起排到右栏（右栏与左栏对称、独立滚动）。
    桌面端不分流——左栏本身可滚动且「＋」固定在底部，放多少都不会消失 */
-const RAIL_LEFT_MAX = 4;
+const RAIL_LEFT_MAX = 6;
 function renderRail(){
   const list = $("#rail-list"); if(!list) return; list.innerHTML = "";
   const rlist = $("#rail-list-right"), rwrap = $("#jar-rail-right");
@@ -3179,7 +3206,7 @@ window.addEventListener("error", e=>{
    不一致 → 弹出可点击的「发现新版本」横幅，并自动用「唯一参数 URL」整页刷新，
    整页刷新走的是与旧 URL 不同的查询串，浏览器与 CDN 都会当作新请求去源站取最新，
    从而真正绕开所有缓存（旧的 sessionStorage 一次性守卫 + reload(true) 做不到这点）。 ===== */
-const SJ_BUILD = "2026-11-05.7";
+const SJ_BUILD = "2026-11-05.8";
 (function versionWatch(){
   if(location.protocol === "file:") return;                  /* 本地文件直接打开不适用 */
   if(typeof fetch !== "function") return;
